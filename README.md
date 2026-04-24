@@ -84,7 +84,7 @@ projects/
 
 ## Submission Instructions
 
-### 1. Fork this Repository
+### 1. Use this Repository Template
 
 Click the **Fork** button at the top-right of this page to create your own copy of this repository under your GitHub account.
 
@@ -125,7 +125,7 @@ Your project `README.md` must include:
 5. In the PR description, briefly describe your project and link to your project's `README.md`.
 6. Submit before the hard deadline: **April 26, 2026 at 4:00 PM CDT (April 27, 2026 at 2:45 AM NPT)**.
 
-> ⚠️ Submissions after the deadline will not be considered. No extensions.
+> ⚠️ Changes pushed after the deadline will not be counted. No extensions.
 
 ---
 
