@@ -22,6 +22,21 @@ export class UsersService {
     return this.prisma.user.create({ data, select: userSelect });
   }
 
+  async existsByEmail(email: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { email },
+      select: { id: true },
+    });
+    return !!user;
+  }
+
+  async findByEmailWithPassword(email: string) {
+    return this.prisma.user.findUnique({
+      where: { email },
+      select: { ...userSelect, password: true },
+    });
+  }
+
   async findAll(query: ListUsersQuery) {
     const { page, pageSize, skip, take } = normalizePagination({
       page: query.page,
