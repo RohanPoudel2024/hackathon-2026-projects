@@ -3,6 +3,7 @@ import { AppointmentModule } from './appointment/appointment.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
+import { CallsModule } from './calls/calls.module';
 import { AvailabilityModule } from './availability/availability.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { SpecializationsModule } from './specializations/specializations.module';
@@ -13,6 +14,7 @@ import { UsersModule } from './users/users.module';
   imports: [
     AppointmentModule,
     AuthModule,
+    CallsModule,
     AvailabilityModule,
     NotificationsModule,
     SpecializationsModule,
