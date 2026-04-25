@@ -5,4 +5,7 @@ export type CreateUserDto = {
   email: string;
   password: string;
   role: Role;
+  specializationId?: string;
+  specializationName?: string;
+  specializationDescription?: string;
 };
