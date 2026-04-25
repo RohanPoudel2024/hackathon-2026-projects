@@ -8,13 +8,14 @@ import {
   Patch,
   Post,
   Query,
+  UseGuards,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
-import {
-  CreateMedicineDto,
-  ListMedicinesQueryDto,
-  UpdateMedicineDto,
-} from './create-medicine.dto';
+import { AdminGuard } from '../common/guards/admin.guard';
+import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
+import { CreateMedicineDto } from './dto/create-medicine.dto';
+import { ListMedicinesQueryDto } from './dto/list-medicines.dto';
+import { UpdateMedicineDto } from './dto/update-medicine.dto';
 import {
   MedicineListResponse,
   MedicineResponse,
@@ -23,6 +24,7 @@ import {
 
 @ApiTags('medicines')
 @Controller('medicines')
+@UseGuards(JwtAuthGuard, AdminGuard)
 export class MedicineController {
   constructor(private readonly medicineService: MedicineService) {}
 
