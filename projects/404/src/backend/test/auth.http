@@ -10,8 +10,8 @@
 @patientpassword = patient123
 
 
-### Users login
-POST {{baseurl}}/auth/login
+### Doctor login
+POST {{baseurl}}/auth/doctor/login
 Content-Type: application/json
 
 {
@@ -19,11 +19,21 @@ Content-Type: application/json
     "password": "{{doctorpassword}}"
 }
 
-### Patient testing
-POST {{baseurl}}/auth/login
+### Patient login
+POST {{baseurl}}/auth/patient/login
 Content-Type: application/json
 
 {
     "email": "{{patientmail}}",
     "password": "{{patientpassword}}"
+}
+
+### Patient signup
+POST {{baseurl}}/auth/patient/signup
+Content-Type: application/json
+
+{
+    "fullName": "Jane Doe",
+    "email": "jane@example.com",
+    "password": "password123"
 }

@@ -4,6 +4,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+import { Role } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import { UsersService } from '../users/users.service';
 import { LoginDto } from './dto/login.dto';
@@ -29,16 +30,20 @@ export class AuthService {
       fullName: data.fullName,
       email: data.email,
       password,
-      role: data.role,
+      role: Role.PATIENT,
     });
 
     return this.buildAuthResponse(user);
   }
 
-  async login(data: LoginDto) {
+  async login(data: LoginDto, expectedRole: string) {
     const user = await this.usersService.findByEmailWithPassword(data.email);
 
     if (!user) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
+
+    if (user.role !== expectedRole) {
       throw new UnauthorizedException('Invalid credentials');
     }
 

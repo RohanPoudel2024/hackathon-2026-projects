@@ -9,16 +9,28 @@ import { Public } from '../common/decorators/public.decorator';
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
-  @Post('signup')
+  @Post('patient/signup')
   @Public()
   signup(@Body() body: SignupDto) {
     return this.authService.signup(body);
   }
 
-  @Post('login')
+  @Post('patient/login')
   @Public()
-  login(@Body() body: LoginDto) {
-    return this.authService.login(body);
+  patientLogin(@Body() body: LoginDto) {
+    return this.authService.login(body, 'PATIENT');
+  }
+
+  @Post('doctor/login')
+  @Public()
+  doctorLogin(@Body() body: LoginDto) {
+    return this.authService.login(body, 'DOCTOR');
+  }
+
+  @Post('admin/login')
+  @Public()
+  adminLogin(@Body() body: LoginDto) {
+    return this.authService.login(body, 'ADMIN');
   }
 
   @Post('logout')
