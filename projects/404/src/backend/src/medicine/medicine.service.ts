@@ -6,11 +6,9 @@ import {
 import { Prisma } from '@prisma/client';
 import { normalizePagination } from '../common/pagination';
 import { PrismaService } from '../prisma.service';
-import {
-  CreateMedicineDto,
-  ListMedicinesQueryDto,
-  UpdateMedicineDto,
-} from './create-medicine.dto';
+import { CreateMedicineDto } from './dto/create-medicine.dto';
+import { ListMedicinesQueryDto } from './dto/list-medicines.dto';
+import { UpdateMedicineDto } from './dto/update-medicine.dto';
 
 const medicineSelect = {
   id: true,
