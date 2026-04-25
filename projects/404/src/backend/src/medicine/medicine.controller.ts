@@ -32,7 +32,9 @@ export class MedicineController {
   }
 
   @Get()
-  findAll(@Query() query: ListMedicinesQueryDto): Promise<MedicineListResponse> {
+  findAll(
+    @Query() query: ListMedicinesQueryDto,
+  ): Promise<MedicineListResponse> {
     return this.medicineService.findAll(query);
   }
 
