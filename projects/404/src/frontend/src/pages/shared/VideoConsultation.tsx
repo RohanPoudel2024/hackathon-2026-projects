@@ -5,6 +5,9 @@ import { DeviceSetup } from "@/components/consultation/DeviceSetup";
 import { WaitingRoom } from "@/components/consultation/WaitingRoom";
 import { ConsultationRoom } from "@/components/consultation/ConsultationRoom";
 import { CallEndedScreen } from "@/components/consultation/CallEndedScreen";
+import { useAuth } from "@/hooks/useAuth";
+import { useGetAppointmentsQuery } from "@/apis/appointmentsApi";
+import { format } from "date-fns";
 
 /**
  * VideoConsultationPage
@@ -19,6 +22,33 @@ import { CallEndedScreen } from "@/components/consultation/CallEndedScreen";
 export function VideoConsultationPage() {
   const navigate = useNavigate();
   const { appointmentId } = useParams<{ appointmentId?: string }>();
+  
+  const { user } = useAuth();
+  const doctorId = user?.doctor?.id;
+  const patientId = user?.patient?.id;
+
+  const { data: appointments } = useGetAppointmentsQuery(
+    { doctorId, patientId },
+    { skip: !doctorId && !patientId }
+  );
+
+  const appointment = appointments?.find((a: any) => a.id === appointmentId);
+
+  let otherPartyName = "Provider";
+  let otherPartyRole = "Healthcare Professional";
+  let appointmentTime = "Scheduled Appointment";
+  
+  if (appointment) {
+     appointmentTime = format(new Date(appointment.startTime), "PPp");
+     if (user?.role === "patient") {
+         otherPartyName = appointment.doctor?.user?.fullName || "Dr. Provider";
+         otherPartyRole = appointment.doctor?.specialization?.name || "Specialist";
+     } else {
+         otherPartyName = appointment.patient?.user?.fullName || "Patient";
+         otherPartyRole = "Patient";
+     }
+  }
+
   const {
     state,
     localVideoRef,
@@ -92,6 +122,9 @@ export function VideoConsultationPage() {
         onToggleMute={toggleMute}
         onToggleCamera={toggleCamera}
         onJoin={joinCall}
+        appointmentTime={appointmentTime}
+        providerName={otherPartyName}
+        providerRole={otherPartyRole}
       />
     );
   }
@@ -112,6 +145,8 @@ export function VideoConsultationPage() {
         onSetActiveTab={setActiveTab}
         onSetNotes={setNotes}
         formatDuration={formatDuration}
+        otherPartyName={otherPartyName}
+        otherPartyRole={otherPartyRole}
       />
     );
   }

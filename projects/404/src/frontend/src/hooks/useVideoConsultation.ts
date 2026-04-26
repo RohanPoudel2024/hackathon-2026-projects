@@ -514,7 +514,7 @@ export function useVideoConsultation(appointmentId?: string) {
     setState((prev) => ({ ...prev, isSidePanelOpen: !prev.isSidePanelOpen }));
   }, []);
 
-  const setActiveTab = useCallback((tab: "notes" | "info" | "chat") => {
+  const setActiveTab = useCallback((tab: "notes" | "info" | "chat" | "summary") => {
     setState((prev) => ({ ...prev, activeTab: tab }));
   }, []);
 

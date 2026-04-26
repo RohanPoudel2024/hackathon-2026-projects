@@ -39,8 +39,8 @@ interface ConsultationRoomProps {
   onSetActiveTab: (tab: "notes" | "info" | "chat" | "summary") => void;
   onSetNotes: (notes: string) => void;
   formatDuration: (s: number) => string;
-  providerName?: string;
-  providerRole?: string;
+  otherPartyName?: string;
+  otherPartyRole?: string;
 }
 
 export function ConsultationRoom({
@@ -56,8 +56,8 @@ export function ConsultationRoom({
   onSetActiveTab,
   onSetNotes,
   formatDuration,
-  providerName = "Dr. Sarah Mitchell",
-  providerRole = "General Practitioner",
+  otherPartyName = "Dr. Sarah Mitchell",
+  otherPartyRole = "General Practitioner",
 }: ConsultationRoomProps) {
   const internalLocalRef = useRef<HTMLVideoElement>(null);
   const localRef = (localVideoRef as React.RefObject<HTMLVideoElement>) ?? internalLocalRef;
@@ -65,10 +65,10 @@ export function ConsultationRoom({
   const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    if (localRef.current && state.localStream) {
+    if (localRef.current && state.localStream && !state.isCameraOff) {
       localRef.current.srcObject = state.localStream;
     }
-  }, [state.localStream, localRef]);
+  }, [state.localStream, localRef, state.isCameraOff]);
 
   // Auto-hide controls after inactivity
   const showControls = () => {
@@ -99,7 +99,7 @@ export function ConsultationRoom({
     excellent: { color: "text-emerald-400", icon: <Signal className="w-3.5 h-3.5" />, label: "Excellent" },
     good: { color: "text-cyan-400", icon: <Wifi className="w-3.5 h-3.5" />, label: "Good" },
     poor: { color: "text-amber-400", icon: <WifiOff className="w-3.5 h-3.5" />, label: "Poor" },
-    unknown: { color: "text-slate-500", icon: <Wifi className="w-3.5 h-3.5" />, label: "Checking…" },
+    unknown: { color: "text-muted-foreground", icon: <Wifi className="w-3.5 h-3.5" />, label: "Checking…" },
   };
   const quality = qualityConfig[state.connectionQuality];
 
@@ -118,9 +118,9 @@ export function ConsultationRoom({
             {/* Simulated remote — in production this is the WebRTC remote stream */}
             <div className="remote-video-placeholder">
               <div className="remote-video-avatar">
-                <span className="text-4xl font-semibold text-white">SM</span>
+                <span className="text-4xl font-semibold text-foreground">SM</span>
               </div>
-              <p className="text-slate-400 text-sm mt-3">{providerName}</p>
+              <p className="text-muted-foreground text-sm mt-3">{otherPartyName}</p>
             </div>
             <video
               ref={remoteVideoRef}
@@ -137,8 +137,8 @@ export function ConsultationRoom({
         <div className="flex items-center gap-3">
           {/* Call duration */}
           <div className="consultation-badge">
-            <Clock className="w-3 h-3 text-slate-400" />
-            <span className="text-xs font-mono text-white">{formatDuration(state.callDuration)}</span>
+            <Clock className="w-3 h-3 text-muted-foreground" />
+            <span className="text-xs font-mono text-foreground">{formatDuration(state.callDuration)}</span>
           </div>
           {/* Connection quality */}
           <div className={`consultation-badge gap-1.5 ${quality.color}`}>
@@ -150,8 +150,8 @@ export function ConsultationRoom({
         {/* Provider name */}
         <div className="flex items-center gap-2">
           <div className="text-right hidden sm:block">
-            <p className="text-sm font-medium text-white">{providerName}</p>
-            <p className="text-xs text-slate-400">{providerRole}</p>
+            <p className="text-sm font-medium text-foreground">{otherPartyName}</p>
+            <p className="text-xs text-muted-foreground">{otherPartyRole}</p>
           </div>
         </div>
 
@@ -195,11 +195,11 @@ export function ConsultationRoom({
             className="w-full h-full object-cover"
           />
         ) : (
-          <div className="flex items-center justify-center w-full h-full bg-slate-800">
-            <CameraOff className="w-5 h-5 text-slate-500" />
+          <div className="flex items-center justify-center w-full h-full bg-muted">
+            <CameraOff className="w-5 h-5 text-muted-foreground" />
           </div>
         )}
-        <div className="absolute bottom-1.5 left-2 text-xs text-white/70 font-medium">You</div>
+        <div className="absolute bottom-1.5 left-2 text-xs text-foreground/70 font-medium">You</div>
         {state.isMuted && (
           <div className="absolute top-1.5 right-2">
             <MicOff className="w-3.5 h-3.5 text-rose-400" />
@@ -213,7 +213,7 @@ export function ConsultationRoom({
           <span className="text-cyan-400 font-semibold text-xs tracking-wider uppercase mr-3">
             {state.liveCaption?.speaker}
           </span>
-          <span className="text-white text-[15px] tracking-wide drop-shadow-md">
+          <span className="text-foreground text-[15px] tracking-wide drop-shadow-md">
             {state.liveCaption?.text}
           </span>
         </div>
@@ -284,8 +284,8 @@ export function ConsultationRoom({
           notes={state.notes}
           onSetActiveTab={onSetActiveTab}
           onSetNotes={onSetNotes}
-          providerName={providerName}
-          providerRole={providerRole}
+          providerName={otherPartyName}
+          providerRole={otherPartyRole}
           callDuration={state.callDuration}
           formatDuration={formatDuration}
           callSessionId={state.callSessionId}
@@ -339,8 +339,8 @@ function ReconnectOverlay({ onReconnect }: { onReconnect: () => void }) {
         <WifiOff className="w-10 h-10 text-amber-400" />
       </div>
       <div>
-        <h2 className="text-xl font-semibold text-white mb-2">Connection Lost</h2>
-        <p className="text-slate-400 text-sm max-w-sm">
+        <h2 className="text-xl font-semibold text-foreground mb-2">Connection Lost</h2>
+        <p className="text-muted-foreground text-sm max-w-sm">
           Your connection was interrupted. Attempting to restore your secure consultation.
         </p>
       </div>
@@ -401,11 +401,11 @@ function ClinicalSidePanel({
       {/* Panel header */}
       <div className="consultation-side-panel-header">
         <ClipboardList className="w-4 h-4 text-cyan-400" />
-        <span className="text-sm font-medium text-white">Clinical Panel</span>
+        <span className="text-sm font-medium text-foreground">Clinical Panel</span>
       </div>
 
       {/* Tabs */}
-      <div className="flex border-b border-slate-800">
+      <div className="flex border-b border-border">
         {tabs.map((tab) => (
           <button
             key={tab.id}
@@ -414,7 +414,7 @@ function ClinicalSidePanel({
             className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs font-medium border-b-2 transition-colors ${
               activeTab === tab.id
                 ? "border-cyan-400 text-cyan-400"
-                : "border-transparent text-slate-500 hover:text-slate-300"
+                : "border-transparent text-muted-foreground hover:text-muted-foreground"
             }`}
           >
             {tab.icon}
@@ -444,8 +444,8 @@ function ClinicalSidePanel({
 }
 
 function InfoTab({
-  providerName,
-  providerRole,
+  providerName: otherPartyName,
+  providerRole: otherPartyRole,
   callDuration,
   formatDuration,
 }: {
@@ -457,20 +457,20 @@ function InfoTab({
   return (
     <div className="space-y-4">
       <div className="consultation-info-card">
-        <p className="text-xs text-slate-500 uppercase tracking-wider mb-3">Provider</p>
+        <p className="text-xs text-muted-foreground uppercase tracking-wider mb-3">Provider</p>
         <div className="flex items-center gap-3">
           <div className="consultation-provider-avatar-sm">
-            <span className="text-sm font-semibold text-white">SM</span>
+            <span className="text-sm font-semibold text-foreground">SM</span>
           </div>
           <div>
-            <p className="text-sm font-medium text-white">{providerName}</p>
-            <p className="text-xs text-slate-400">{providerRole}</p>
+            <p className="text-sm font-medium text-foreground">{otherPartyName}</p>
+            <p className="text-xs text-muted-foreground">{otherPartyRole}</p>
           </div>
         </div>
       </div>
 
       <div className="consultation-info-card">
-        <p className="text-xs text-slate-500 uppercase tracking-wider mb-3">Session</p>
+        <p className="text-xs text-muted-foreground uppercase tracking-wider mb-3">Session</p>
         <div className="space-y-2.5">
           <InfoRow label="Duration" value={formatDuration(callDuration)} />
           <InfoRow label="Type" value="Video Consultation" />
@@ -480,13 +480,13 @@ function InfoTab({
       </div>
 
       <div className="consultation-info-card">
-        <p className="text-xs text-slate-500 uppercase tracking-wider mb-3">Vital Reminders</p>
+        <p className="text-xs text-muted-foreground uppercase tracking-wider mb-3">Vital Reminders</p>
         <ul className="space-y-2">
           {["Blood pressure reading", "Current medications list", "Symptom onset date"].map(
             (item) => (
               <li key={item} className="flex items-start gap-2">
                 <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 mt-1.5 flex-shrink-0" />
-                <span className="text-xs text-slate-400">{item}</span>
+                <span className="text-xs text-muted-foreground">{item}</span>
               </li>
             )
           )}
@@ -499,7 +499,7 @@ function InfoTab({
 function InfoRow({
   label,
   value,
-  valueClass = "text-white",
+  valueClass = "text-foreground",
 }: {
   label: string;
   value: string;
@@ -507,7 +507,7 @@ function InfoRow({
 }) {
   return (
     <div className="flex justify-between items-center">
-      <span className="text-xs text-slate-500">{label}</span>
+      <span className="text-xs text-muted-foreground">{label}</span>
       <span className={`text-xs font-medium ${valueClass}`}>{value}</span>
     </div>
   );
@@ -516,7 +516,7 @@ function InfoRow({
 function NotesTab({ notes, onChange }: { notes: string; onChange: (v: string) => void }) {
   return (
     <div className="h-full flex flex-col gap-3">
-      <p className="text-xs text-slate-500">
+      <p className="text-xs text-muted-foreground">
         Clinical notes are saved locally and encrypted. Do not include PHI beyond what is necessary.
       </p>
       <textarea
@@ -527,7 +527,7 @@ function NotesTab({ notes, onChange }: { notes: string; onChange: (v: string) =>
         className="consultation-notes-textarea flex-1"
         rows={12}
       />
-      <p className="text-xs text-slate-700 text-right">{notes.length} characters</p>
+      <p className="text-xs text-muted-foreground text-right">{notes.length} characters</p>
     </div>
   );
 }
@@ -568,12 +568,12 @@ function ChatTab() {
             <div
               className={`max-w-[85%] px-3 py-2 rounded-2xl text-xs ${
                 m.sender === "patient"
-                  ? "bg-cyan-500/20 text-cyan-100 rounded-br-sm"
-                  : "bg-slate-800 text-slate-200 rounded-bl-sm"
+                  ? "bg-primary text-primary-foreground rounded-br-sm"
+                  : "bg-muted text-foreground rounded-bl-sm"
               }`}
             >
               <p>{m.text}</p>
-              <p className="text-slate-500 mt-1 text-right">{m.time}</p>
+              <p className="text-muted-foreground mt-1 text-right">{m.time}</p>
             </div>
           </div>
         ))}
@@ -638,13 +638,13 @@ function SummaryTab({ callSessionId }: { callSessionId: string | null }) {
   }, [callSessionId]);
 
   if (!callSessionId) {
-    return <div className="text-slate-500 text-xs text-center py-6">Connecting session...</div>;
+    return <div className="text-muted-foreground text-xs text-center py-6">Connecting session...</div>;
   }
 
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-medium text-white">Clinical Summary</h3>
+        <h3 className="text-sm font-medium text-foreground">Clinical Summary</h3>
         <button
           onClick={() => fetchSummary(true)}
           disabled={loading}
@@ -657,20 +657,20 @@ function SummaryTab({ callSessionId }: { callSessionId: string | null }) {
 
       {!summaryData && !loading && (
         <div className="text-center py-8">
-          <p className="text-slate-500 text-xs">No summary generated yet.</p>
+          <p className="text-muted-foreground text-xs">No summary generated yet.</p>
         </div>
       )}
 
       {summaryData && (
-        <div className="space-y-4 text-xs text-slate-300">
-          <div className="bg-slate-800/50 p-3 rounded-xl">
-            <h4 className="text-slate-400 uppercase tracking-wider text-[10px] mb-2 font-semibold">SOAP Note</h4>
+        <div className="space-y-4 text-xs text-muted-foreground">
+          <div className="bg-muted/50 p-3 rounded-xl">
+            <h4 className="text-muted-foreground uppercase tracking-wider text-[10px] mb-2 font-semibold">SOAP Note</h4>
             <p className="leading-relaxed">{summaryData.summary}</p>
           </div>
           
           {summaryData.diagnoses?.length > 0 && (
-            <div className="bg-slate-800/50 p-3 rounded-xl">
-              <h4 className="text-slate-400 uppercase tracking-wider text-[10px] mb-2 font-semibold">Diagnoses</h4>
+            <div className="bg-muted/50 p-3 rounded-xl">
+              <h4 className="text-muted-foreground uppercase tracking-wider text-[10px] mb-2 font-semibold">Diagnoses</h4>
               <ul className="list-disc pl-4 space-y-1">
                 {summaryData.diagnoses.map((d: string, i: number) => <li key={i}>{d}</li>)}
               </ul>
@@ -678,8 +678,8 @@ function SummaryTab({ callSessionId }: { callSessionId: string | null }) {
           )}
 
           {summaryData.medications?.length > 0 && (
-            <div className="bg-slate-800/50 p-3 rounded-xl">
-              <h4 className="text-slate-400 uppercase tracking-wider text-[10px] mb-2 font-semibold">Medications</h4>
+            <div className="bg-muted/50 p-3 rounded-xl">
+              <h4 className="text-muted-foreground uppercase tracking-wider text-[10px] mb-2 font-semibold">Medications</h4>
               <ul className="list-disc pl-4 space-y-1">
                 {summaryData.medications.map((m: string, i: number) => <li key={i}>{m}</li>)}
               </ul>
@@ -687,8 +687,8 @@ function SummaryTab({ callSessionId }: { callSessionId: string | null }) {
           )}
 
           {summaryData.followUp && (
-            <div className="bg-slate-800/50 p-3 rounded-xl">
-              <h4 className="text-slate-400 uppercase tracking-wider text-[10px] mb-2 font-semibold">Follow Up</h4>
+            <div className="bg-muted/50 p-3 rounded-xl">
+              <h4 className="text-muted-foreground uppercase tracking-wider text-[10px] mb-2 font-semibold">Follow Up</h4>
               <p>{summaryData.followUp}</p>
             </div>
           )}

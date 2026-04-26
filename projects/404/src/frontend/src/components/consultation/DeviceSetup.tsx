@@ -49,10 +49,10 @@ export function DeviceSetup({
   const videoRef = (localVideoRef as React.RefObject<HTMLVideoElement>) ?? internalRef;
 
   useEffect(() => {
-    if (videoRef.current && localStream) {
+    if (videoRef.current && localStream && !isCameraOff) {
       videoRef.current.srcObject = localStream;
     }
-  }, [localStream, videoRef]);
+  }, [localStream, videoRef, isCameraOff]);
 
   return (
     <div className="consultation-bg min-h-screen flex items-center justify-center p-6">
@@ -65,8 +65,8 @@ export function DeviceSetup({
               Device Setup
             </span>
           </div>
-          <h1 className="text-3xl font-semibold text-white">Ready to Join?</h1>
-          <p className="text-slate-400 mt-2 text-sm">
+          <h1 className="text-3xl font-semibold text-foreground">Ready to Join?</h1>
+          <p className="text-muted-foreground mt-2 text-sm">
             Check your camera and microphone before entering the consultation.
           </p>
         </div>
@@ -86,9 +86,9 @@ export function DeviceSetup({
               ) : (
                 <div className="flex flex-col items-center justify-center h-full gap-4">
                   <div className="consultation-avatar-xl">
-                    <CameraOff className="w-8 h-8 text-slate-400" />
+                    <CameraOff className="w-8 h-8 text-muted-foreground" />
                   </div>
-                  <p className="text-slate-500 text-sm">Camera is off</p>
+                  <p className="text-muted-foreground text-sm">Camera is off</p>
                 </div>
               )}
 
@@ -192,7 +192,7 @@ function DeviceSelect({ icon, label, devices, selected, onChange, id }: DeviceSe
     <div className="consultation-device-select">
       <div className="flex items-center gap-2 mb-2">
         <span className="text-cyan-400">{icon}</span>
-        <label htmlFor={id} className="text-xs font-medium text-slate-400 uppercase tracking-wider">
+        <label htmlFor={id} className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
           {label}
         </label>
       </div>
@@ -213,7 +213,7 @@ function DeviceSelect({ icon, label, devices, selected, onChange, id }: DeviceSe
             ))
           )}
         </select>
-        <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+        <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
       </div>
     </div>
   );
@@ -223,9 +223,9 @@ function ReadinessCheck({ label, passed }: { label: string; passed: boolean }) {
   return (
     <div className="flex items-center gap-2">
       <CheckCircle2
-        className={`w-4 h-4 transition-colors ${passed ? "text-emerald-400" : "text-slate-700"}`}
+        className={`w-4 h-4 transition-colors ${passed ? "text-emerald-400" : "text-muted-foreground"}`}
       />
-      <span className={`text-xs ${passed ? "text-slate-300" : "text-slate-600"}`}>{label}</span>
+      <span className={`text-xs ${passed ? "text-muted-foreground" : "text-slate-600"}`}>{label}</span>
     </div>
   );
 }

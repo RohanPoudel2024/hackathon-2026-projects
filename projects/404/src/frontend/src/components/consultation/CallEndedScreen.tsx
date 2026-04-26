@@ -26,8 +26,8 @@ export function CallEndedScreen({
 
         {/* Title */}
         <div className="space-y-2">
-          <h1 className="text-2xl font-semibold text-white">Consultation Complete</h1>
-          <p className="text-slate-400 text-sm">
+          <h1 className="text-2xl font-semibold text-foreground">Consultation Complete</h1>
+          <p className="text-muted-foreground text-sm">
             Your session with {providerName} has ended.
           </p>
         </div>
@@ -36,25 +36,25 @@ export function CallEndedScreen({
         <div className="grid grid-cols-2 gap-4">
           <div className="consultation-info-card text-center">
             <Clock className="w-5 h-5 text-cyan-400 mx-auto mb-1" />
-            <p className="text-lg font-mono font-bold text-white">{formatDuration(callDuration)}</p>
-            <p className="text-xs text-slate-500 mt-0.5">Duration</p>
+            <p className="text-lg font-mono font-bold text-foreground">{formatDuration(callDuration)}</p>
+            <p className="text-xs text-muted-foreground mt-0.5">Duration</p>
           </div>
           <div className="consultation-info-card text-center">
             <CheckCircle2 className="w-5 h-5 text-emerald-400 mx-auto mb-1" />
-            <p className="text-lg font-bold text-white">Secure</p>
-            <p className="text-xs text-slate-500 mt-0.5">E2E Encrypted</p>
+            <p className="text-lg font-bold text-foreground">Secure</p>
+            <p className="text-xs text-muted-foreground mt-0.5">E2E Encrypted</p>
           </div>
         </div>
 
         {/* Rating */}
         <div className="space-y-3">
-          <p className="text-sm text-slate-400">How was your experience?</p>
+          <p className="text-sm text-muted-foreground">How was your experience?</p>
           <div className="flex items-center justify-center gap-2">
             {[1, 2, 3, 4, 5].map((star) => (
               <button
                 key={star}
                 id={`rating-star-${star}`}
-                className="text-slate-700 hover:text-amber-400 transition-colors focus:outline-none"
+                className="text-muted-foreground hover:text-amber-400 transition-colors focus:outline-none"
               >
                 <Star className="w-7 h-7 fill-current" />
               </button>

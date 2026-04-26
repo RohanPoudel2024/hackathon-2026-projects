@@ -35,10 +35,10 @@ export function PermissionGate({
 
         {/* Title */}
         <div className="space-y-2">
-          <h1 className="text-2xl font-semibold text-white">
+          <h1 className="text-2xl font-semibold text-foreground">
             {isChecking ? "Checking Device Access" : "Permissions Required"}
           </h1>
-          <p className="text-slate-400 text-sm leading-relaxed max-w-sm mx-auto">
+          <p className="text-muted-foreground text-sm leading-relaxed max-w-sm mx-auto">
             {isChecking
               ? "Please allow access to your camera and microphone when your browser prompts you."
               : "Camera and microphone access was denied. You'll need to grant permissions to join the consultation."}
@@ -67,7 +67,7 @@ export function PermissionGate({
             <AlertTriangle className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" />
             <div className="text-left space-y-1">
               <p className="text-amber-300 text-sm font-medium">How to enable permissions</p>
-              <ol className="text-slate-400 text-xs space-y-1 list-decimal list-inside">
+              <ol className="text-muted-foreground text-xs space-y-1 list-decimal list-inside">
                 <li>Click the camera icon in your browser's address bar</li>
                 <li>Select "Allow" for both camera and microphone</li>
                 <li>Click "Try Again" below to retry</li>
@@ -113,7 +113,7 @@ function PermissionRow({ icon, label, state, isChecking }: PermissionRowProps) {
   const config = {
     pending: {
       dot: "bg-slate-500",
-      text: "text-slate-400",
+      text: "text-muted-foreground",
       label: "Waiting for permission…",
       ring: "ring-slate-700",
     },
@@ -143,11 +143,11 @@ function PermissionRow({ icon, label, state, isChecking }: PermissionRowProps) {
     <div className={`consultation-permission-row ring-1 ${c.ring}`}>
       <div className="flex items-center gap-3">
         <div className="consultation-permission-icon">{icon}</div>
-        <span className="text-sm font-medium text-white">{label}</span>
+        <span className="text-sm font-medium text-foreground">{label}</span>
       </div>
       <div className="flex items-center gap-2">
         {isChecking ? (
-          <Loader2 className="w-3.5 h-3.5 text-slate-400 animate-spin" />
+          <Loader2 className="w-3.5 h-3.5 text-muted-foreground animate-spin" />
         ) : (
           <span className={`w-2 h-2 rounded-full ${c.dot}`} />
         )}

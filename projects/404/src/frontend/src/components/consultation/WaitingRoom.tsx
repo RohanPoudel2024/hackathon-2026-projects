@@ -51,10 +51,10 @@ export function WaitingRoom({
   const [elapsedWait, setElapsedWait] = useState(0);
 
   useEffect(() => {
-    if (videoRef.current && localStream) {
+    if (videoRef.current && localStream && !isCameraOff) {
       videoRef.current.srcObject = localStream;
     }
-  }, [localStream, videoRef]);
+  }, [localStream, videoRef, isCameraOff]);
 
   useEffect(() => {
     const t = setInterval(() => setElapsedWait((p) => p + 1), 1000);
@@ -81,10 +81,10 @@ export function WaitingRoom({
               Waiting Room
             </span>
           </div>
-          <h1 className="text-3xl font-semibold text-white">
+          <h1 className="text-3xl font-semibold text-foreground">
             {isConnecting ? "Connecting…" : "The provider will be with you shortly"}
           </h1>
-          <p className="text-slate-400 mt-2 text-sm">
+          <p className="text-muted-foreground mt-2 text-sm">
             {isConnecting
               ? "Establishing secure connection"
               : "Please wait. Your session is being prepared."}
@@ -106,15 +106,15 @@ export function WaitingRoom({
               ) : (
                 <div className="flex flex-col items-center justify-center h-full gap-3">
                   <div className="consultation-avatar-xl">
-                    <CameraOff className="w-8 h-8 text-slate-400" />
+                    <CameraOff className="w-8 h-8 text-muted-foreground" />
                   </div>
-                  <p className="text-slate-500 text-sm">Your camera is off</p>
+                  <p className="text-muted-foreground text-sm">Your camera is off</p>
                 </div>
               )}
 
               {/* Self label */}
               <div className="absolute top-4 left-4 consultation-badge">
-                <span className="text-xs text-slate-300">You</span>
+                <span className="text-xs text-muted-foreground">You</span>
               </div>
 
               {/* Preview controls */}
@@ -154,8 +154,8 @@ export function WaitingRoom({
                   <Video className="w-6 h-6 text-cyan-400" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-white font-semibold truncate">{providerName}</p>
-                  <p className="text-slate-400 text-xs mt-0.5">{providerRole}</p>
+                  <p className="text-foreground font-semibold truncate">{providerName}</p>
+                  <p className="text-muted-foreground text-xs mt-0.5">{providerRole}</p>
                   <div className="flex items-center gap-1.5 mt-2">
                     <Clock className="w-3.5 h-3.5 text-cyan-400" />
                     <span className="text-cyan-400 text-xs font-medium">{appointmentTime}</span>
@@ -166,8 +166,8 @@ export function WaitingRoom({
 
             {/* Wait timer */}
             <div className="consultation-info-card text-center">
-              <p className="text-xs text-slate-500 uppercase tracking-wider mb-1">Waiting</p>
-              <p className="text-3xl font-mono font-bold text-white">{formatWait(elapsedWait)}</p>
+              <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Waiting</p>
+              <p className="text-3xl font-mono font-bold text-foreground">{formatWait(elapsedWait)}</p>
             </div>
 
             {/* Security note */}
@@ -175,7 +175,7 @@ export function WaitingRoom({
               <Shield className="w-4 h-4 text-emerald-400 flex-shrink-0 mt-0.5" />
               <div>
                 <p className="text-emerald-400 text-xs font-medium">End-to-end encrypted</p>
-                <p className="text-slate-500 text-xs mt-0.5">
+                <p className="text-muted-foreground text-xs mt-0.5">
                   HIPAA-compliant secure consultation
                 </p>
               </div>
