@@ -38,7 +38,7 @@ Content-Type: application/json
 Authorization: Bearer {{adminToken}}
 
 {
-  "userId": "9e0012cb-348b-44bd-b44e-102f117ec324",
+  "userId": "e9025023-ea8e-4b42-9471-a03e9a650fea",
   "title": "Appointment Confirmed",
   "message": "Your appointment on 2024-05-01 at 10:00 AM has been confirmed.",
   "type": "APPOINTMENT"
@@ -64,7 +64,7 @@ GET {{baseUrl}}/notifications
 Authorization: Bearer {{patientToken}}
 
 ### Get all notifications (admin can filter by userId)
-GET {{baseUrl}}/notifications?userId=9e0012cb-348b-44bd-b44e-102f117ec324
+GET {{baseUrl}}/notifications?userId=e9025023-ea8e-4b42-9471-a03e9a650fea
 Authorization: Bearer {{adminToken}}
 
 ### Get notifications filtered by isRead=false (unread only)

@@ -6,15 +6,21 @@ import { Appointments } from "@/pages/physician/Appointments";
 import { Availability } from "@/pages/physician/Availability";
 import { Login } from "@/pages/auth/Login";
 import { Profile } from "@/pages/shared/Profile";
-
 import { Chat } from "@/pages/physician/Chat";
+import { VideoConsultationPage } from "@/pages/shared/VideoConsultation";
 
 export function PhysicianRoutes() {
   return (
     <Routes>
       {/* Auth isolated from layout headers/footers */}
       <Route path="login" element={<Login />} />
-      
+
+      {/* Video consultation is full-screen — rendered outside the layout shell */}
+      <Route element={<ProtectedRoute allowedRoles={["physician", "doctor"]} redirectPath="/physician/login" />}>
+        <Route path="/consultation" element={<VideoConsultationPage />} />
+        <Route path="/consultation/:appointmentId" element={<VideoConsultationPage />} />
+      </Route>
+
       <Route element={<ProtectedRoute allowedRoles={["physician", "doctor"]} redirectPath="/physician/login" />}>
         <Route element={<PhysicianLayout />}>
           <Route path="/" element={<PhysicianDashboard />} />
@@ -28,3 +34,4 @@ export function PhysicianRoutes() {
     </Routes>
   );
 }
+
