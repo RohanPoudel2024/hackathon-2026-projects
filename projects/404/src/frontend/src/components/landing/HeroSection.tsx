@@ -1,5 +1,5 @@
 import { ArrowRight, Play, CheckCircle2, Sparkles } from 'lucide-react';
-import Button from '../ui/Button';
+import Button from '../ui/PublicButton';
 import Badge from '../ui/Badge';
 
 const highlights = [

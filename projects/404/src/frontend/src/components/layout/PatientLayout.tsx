@@ -1,159 +1,166 @@
-import { NavLink, Outlet } from "react-router-dom";
-import {
-  Calendar,
-  CheckSquare,
-  Home,
-  LogOut,
-  MessageCircle,
-  MessageSquare,
-  Pill,
-  ShieldCheck,
-} from "lucide-react";
+import { NavLink, Outlet, Link } from "react-router-dom";
+import { Calendar, Home, LogOut, ShieldCheck, Bot } from "lucide-react";
 import { useAuth } from "../../contexts/AuthContext";
-import Button from "../ui/Button";
+import { useLocation } from "react-router-dom";
 
 export default function PatientLayout() {
   const { user, signOut } = useAuth();
+  const location = useLocation();
   const firstName = user?.fullName?.split(" ")[0] || "Patient";
+  const initials = user?.fullName
+    ? user.fullName.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase()
+    : "P";
 
   const navItems = [
-    { to: "/patient/home", icon: Home, label: "Today" },
-    { to: "/patient/messages", icon: MessageSquare, label: "Messages" },
-    { to: "/patient/tasks", icon: CheckSquare, label: "Care Tasks" },
-    { to: "/patient/medications", icon: Pill, label: "Medications" },
-    { to: "/patient/appointments", icon: Calendar, label: "Visits" },
+    { to: "/patient/home",         icon: Home,     label: "Home"         },
+    { to: "/patient/appointments", icon: Calendar, label: "Appointments" },
+    { to: "/patient/chat",         icon: Bot,      label: "AI Chat"      },
   ];
 
+  // Chat page needs full height — no padding wrapper
+  const isChatPage = location.pathname.includes("/chat");
+
   return (
-    <div className="min-h-screen bg-[#F8FAFC] flex flex-col md:flex-row font-sans">
-      {/* Desktop Sidebar */}
-      <aside className="w-full md:w-64 bg-white border-r border-gray-200 flex-shrink-0 flex flex-col hidden md:flex sticky top-0 h-screen overflow-hidden">
-        {/* App Logo */}
-        <div className="px-6 py-6 border-b border-gray-100 flex items-center gap-2 font-extrabold text-xl tracking-tight text-gray-900">
-          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-600 text-white shadow-sm">
-            <ShieldCheck size={18} />
-          </span>
-          CareFlow <span className="text-indigo-600">AI</span>
+    <div className="min-h-screen bg-slate-50 flex flex-col md:flex-row font-sans">
+
+      {/* ─────────────── Desktop Sidebar ─────────────── */}
+      <aside className="hidden md:flex w-64 xl:w-72 shrink-0 flex-col bg-white border-r border-gray-100 sticky top-0 h-screen">
+
+        {/* Brand */}
+        <div className="px-6 py-6 border-b border-gray-100">
+          <Link to="/patient/home" className="flex items-center gap-3">
+            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-600 text-white shadow-sm shrink-0">
+              <ShieldCheck size={18} />
+            </span>
+            <span className="font-extrabold text-[17px] tracking-tight text-gray-900">
+              CareFlow <span className="text-indigo-600">AI</span>
+            </span>
+          </Link>
         </div>
 
-        {/* User Profile Widget */}
+        {/* User card */}
         <div className="px-5 py-5 border-b border-gray-100">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-indigo-50 text-indigo-700 font-bold text-lg border border-indigo-100">
-              {user?.fullName?.charAt(0) || "P"}
+          <div className="flex items-center gap-3 bg-slate-50 rounded-2xl px-4 py-4">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-indigo-600 text-white font-bold text-sm shadow-sm">
+              {initials}
             </div>
             <div className="min-w-0 flex-1">
-              <h2 className="truncate text-sm font-bold text-gray-900">
-                {user?.fullName || "Patient User"}
-              </h2>
-              <p className="truncate text-xs font-semibold text-indigo-600">
-                Active care plan
+              <p className="truncate text-sm font-bold text-gray-900 leading-snug">
+                {user?.fullName || "Patient"}
               </p>
+              <div className="flex items-center gap-1.5 mt-1">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
+                <p className="text-xs font-semibold text-emerald-600">Active</p>
+              </div>
             </div>
           </div>
         </div>
 
-        <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
+        {/* Nav links */}
+        <nav className="flex-1 px-4 py-6 space-y-1.5 overflow-y-auto">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 px-3 mb-4">
+            Navigation
+          </p>
           {navItems.map((item) => (
             <NavLink
               key={item.to}
               to={item.to}
               className={({ isActive }) =>
-                `flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-bold transition-all duration-200 ${
+                `flex items-center gap-3.5 rounded-xl px-4 py-3.5 text-sm font-semibold transition-all duration-150 ${
                   isActive
-                    ? "bg-indigo-50 text-indigo-700 font-extrabold"
-                    : "text-gray-500 hover:bg-gray-50 hover:text-gray-900"
+                    ? "bg-indigo-600 text-white shadow-sm shadow-indigo-200"
+                    : "text-gray-500 hover:bg-slate-50 hover:text-gray-900"
                 }`
               }
             >
               {({ isActive }) => (
                 <>
-                  <item.icon size={18} strokeWidth={isActive ? 2.5 : 2} />
-                  {item.label}
+                  <item.icon
+                    size={18}
+                    strokeWidth={isActive ? 2.5 : 2}
+                    className="shrink-0"
+                  />
+                  <span className="flex-1">{item.label}</span>
                 </>
               )}
             </NavLink>
           ))}
         </nav>
 
-        <div className="p-4 border-t border-gray-100 space-y-4 bg-gray-50/50">
-          <div className="bg-white border border-gray-200 rounded-xl p-4 text-xs font-medium text-gray-500 leading-relaxed shadow-sm">
-            <div className="flex items-center gap-2 text-gray-900 font-bold mb-1">
-              <ShieldCheck size={16} className="text-emerald-500" />
-              Trusted Care Team
-            </div>
-            Message your care team any time for guidance, refills, or follow-ups.
-            <Button
-              variant="outline"
-              size="sm"
-              className="mt-3 w-full justify-center text-indigo-700 border-indigo-200 bg-indigo-50 hover:bg-indigo-100"
-              as="a"
-              href="/patient/messages"
-            >
-              <MessageCircle size={14} className="mr-1.5" />
-              Send a message
-            </Button>
-          </div>
+        {/* Sign out */}
+        <div className="px-4 py-5 border-t border-gray-100">
           <button
             onClick={signOut}
-            className="flex items-center gap-3 px-3 py-2.5 w-full text-left rounded-xl text-sm font-bold text-gray-500 hover:bg-red-50 hover:text-red-600 transition-colors"
+            className="flex items-center gap-3.5 px-4 py-3.5 w-full text-left rounded-xl text-sm font-semibold text-gray-500 hover:bg-red-50 hover:text-red-600 transition-colors"
           >
-            <LogOut size={18} />
+            <LogOut size={17} className="shrink-0" />
             Sign out
           </button>
         </div>
       </aside>
 
-      {/* Main Content */}
+      {/* ─────────────── Content Area ─────────────── */}
       <div className="flex min-w-0 flex-1 flex-col h-screen overflow-hidden">
-        {/* Header - Mobile & Tablet Only */}
-        <header className="sticky top-0 z-30 px-4 py-3 bg-white border-b border-gray-200 shadow-sm md:hidden flex items-center justify-between">
+
+        {/* Mobile header */}
+        <header className="sticky top-0 z-30 px-5 py-4 bg-white border-b border-gray-100 shadow-sm md:hidden flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-indigo-600 text-sm font-bold text-white shadow-sm">
-              {user?.fullName?.charAt(0) || "P"}
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-indigo-600 text-white shadow-sm">
+              <ShieldCheck size={15} />
             </div>
             <div>
-              <p className="text-[10px] font-bold uppercase tracking-wide text-indigo-600 line-clamp-1">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-indigo-600 leading-none mb-0.5">
                 CareFlow AI
               </p>
-              <p className="text-sm font-extrabold text-gray-900 truncate">
-                Welcome, {firstName}
+              <p className="text-sm font-extrabold text-gray-900 leading-tight">
+                Hi, {firstName}
               </p>
             </div>
           </div>
-          <button onClick={signOut} className="text-gray-400 hover:text-red-500 transition-colors p-2">
-            <LogOut size={20} />
+          <button
+            onClick={signOut}
+            className="p-2 text-gray-400 hover:text-red-500 transition-colors rounded-lg hover:bg-red-50"
+          >
+            <LogOut size={18} />
           </button>
         </header>
 
-        <main className="flex-1 overflow-y-auto w-full p-4 md:p-8 pb-24 md:pb-8 relative">
-          <div className="max-w-4xl mx-auto h-full">
+        {/* Page content */}
+        {isChatPage ? (
+          /* Chat gets full height with no padding — manages its own layout */
+          <main className="flex-1 overflow-hidden pb-16 md:pb-0">
             <Outlet />
-          </div>
-        </main>
+          </main>
+        ) : (
+          /* All other pages: constrained max-width with comfortable padding */
+          <main className="flex-1 overflow-y-auto pb-24 md:pb-8">
+            <div className="max-w-screen-xl mx-auto px-6 py-7 sm:px-8 sm:py-8 lg:px-12 lg:py-10">
+              <Outlet />
+            </div>
+          </main>
+        )}
       </div>
 
-      {/* Mobile Bottom Nav */}
-      <nav className="bg-white border-t border-gray-200 fixed bottom-0 left-0 right-0 z-40 md:hidden shadow-[0_-4px_24px_-8px_rgba(0,0,0,0.1)]">
-        <div className="flex items-center justify-around px-2 py-2">
+      {/* ─────────────── Mobile Bottom Nav ─────────────── */}
+      <nav className="bg-white border-t border-gray-200 fixed bottom-0 left-0 right-0 z-40 md:hidden shadow-[0_-2px_20px_-4px_rgba(0,0,0,0.1)]">
+        <div className="flex items-stretch justify-around">
           {navItems.map((item) => (
             <NavLink
               key={item.to}
               to={item.to}
               className={({ isActive }) =>
-                `flex flex-col items-center justify-center gap-1 min-w-[64px] py-1 transition-all ${
-                  isActive
-                    ? "text-indigo-600"
-                    : "text-gray-400 hover:text-gray-900"
+                `flex flex-col items-center justify-center gap-1.5 flex-1 py-3 min-h-[62px] transition-all relative ${
+                  isActive ? "text-indigo-600" : "text-gray-400"
                 }`
               }
             >
               {({ isActive }) => (
                 <>
-                  <div className={`p-1 rounded-xl transition-colors ${isActive ? 'bg-indigo-50' : 'bg-transparent'}`}>
-                    <item.icon size={20} className={isActive ? 'fill-indigo-100/50' : ''} />
-                  </div>
-                  <span className={`text-[10px] font-bold ${isActive ? 'text-indigo-700' : 'text-gray-500'}`}>
+                  {isActive && (
+                    <span className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-indigo-600 rounded-b-full" />
+                  )}
+                  <item.icon size={21} strokeWidth={isActive ? 2.5 : 1.75} />
+                  <span className={`text-[10px] font-bold leading-none ${isActive ? "text-indigo-600" : "text-gray-400"}`}>
                     {item.label}
                   </span>
                 </>

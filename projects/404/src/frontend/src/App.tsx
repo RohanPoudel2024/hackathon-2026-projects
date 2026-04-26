@@ -19,8 +19,6 @@ import PhysicianLoginPage from "./pages/auth/PhysicianLoginPage";
 // Patient Pages
 import PatientHomePage from "./pages/patient/PatientHomePage";
 import PatientAppointmentsPage from "./pages/patient/PatientAppointmentsPage";
-import PatientMedicationsPage from "./pages/patient/PatientMedicationsPage";
-import PatientTasksPage from "./pages/patient/PatientTasksPage";
 import ChatPage from "./pages/ChatPage";
 
 // Physician Pages
@@ -57,13 +55,12 @@ function App() {
             <Route path="/patient" element={<PatientLayout />}>
               <Route index element={<Navigate to="home" replace />} />
               <Route path="home" element={<PatientHomePage />} />
-              <Route
-                path="appointments"
-                element={<PatientAppointmentsPage />}
-              />
-              <Route path="medications" element={<PatientMedicationsPage />} />
-              <Route path="tasks" element={<PatientTasksPage />} />
-              <Route path="messages" element={<ChatPage />} />
+              <Route path="appointments" element={<PatientAppointmentsPage />} />
+              <Route path="chat" element={<ChatPage />} />
+              {/* Legacy redirects */}
+              <Route path="messages" element={<Navigate to="/patient/chat" replace />} />
+              <Route path="medications" element={<Navigate to="/patient/home" replace />} />
+              <Route path="tasks" element={<Navigate to="/patient/home" replace />} />
             </Route>
           </Route>
 
@@ -80,21 +77,11 @@ function App() {
               <Route index element={<Navigate to="home" replace />} />
               <Route path="home" element={<PhysicianHomePage />} />
               <Route path="availability" element={<PhysicianAvailabilityPage />} />
-              <Route path="messages" element={<ChatPage />} />
-              <Route
-                path="appointments"
-                element={
-                  <div className="p-8">
-                    Appointments Management (Coming Soon)
-                  </div>
-                }
-              />
-              <Route
-                path="patients"
-                element={
-                  <div className="p-8">Patient Directory (Coming Soon)</div>
-                }
-              />
+              <Route path="chat" element={<ChatPage />} />
+              {/* Legacy redirects */}
+              <Route path="messages" element={<Navigate to="/physician/chat" replace />} />
+              <Route path="appointments" element={<Navigate to="/physician/home" replace />} />
+              <Route path="patients" element={<Navigate to="/physician/home" replace />} />
             </Route>
           </Route>
 

@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Menu, X, Heart } from "lucide-react";
-import Button from "../ui/Button";
+import Button from "../ui/PublicButton";
 
 const navLinks = [
   { label: "Home", to: "/" },

@@ -1,6 +1,6 @@
 import { Pill, CalendarCheck, Users, FileText, ArrowRight, Zap } from 'lucide-react';
 import Badge from '../ui/Badge';
-import Button from '../ui/Button';
+import Button from '../ui/PublicButton';
 
 const outcomes = [
   { icon: Pill,          label: 'Medication Schedules', desc: 'Precise dosing, frequency, and duration extracted automatically' },
