@@ -1,5 +1,6 @@
 import { useState } from "react"
 import { useNavigate } from "react-router-dom"
+import { cn } from "@/lib/utils"
 import { format } from "date-fns"
 import { 
   Calendar, 
@@ -131,6 +132,71 @@ export function Appointments() {
                         </span>
                         <span className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 text-[10px] font-bold uppercase tracking-wider">
                           {appt.isVirtual ? "Video Call" : "In-Person"}
+=======
+  );
+
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case "PENDING":
+        return <Badge variant="outline" className="text-yellow-600 bg-yellow-50">{status}</Badge>;
+      case "CONFIRMED":
+        return <Badge className="bg-green-600 hover:bg-green-700">{status}</Badge>;
+      case "CANCELLED":
+        return <Badge variant="destructive">{status}</Badge>;
+      case "COMPLETED":
+        return <Badge variant="secondary">{status}</Badge>;
+      case "RESCHEDULED":
+        return <Badge variant="outline" className="text-blue-600 bg-blue-50">{status}</Badge>;
+      default:
+        return <Badge variant="outline">{status}</Badge>;
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex h-[50vh] items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex-1 space-y-6">
+      <div className="flex items-center justify-between">
+        <h2 className="text-3xl font-bold tracking-tight">My Appointments</h2>
+      </div>
+
+      <div className="rounded-xl border bg-card">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Doctor</TableHead>
+              <TableHead>Date &amp; Time</TableHead>
+              <TableHead>Reason</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead className="text-right">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {!appointments || appointments.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={5} className="h-24 text-center text-muted-foreground italic">
+                  No appointments found.
+                </TableCell>
+              </TableRow>
+            ) : (
+              appointments.map((apt: any) => (
+                <TableRow key={apt.id}>
+                  <TableCell className="font-medium">
+                    {apt.doctor?.user?.fullName || "Doctor"}
+                    <div className="text-xs text-muted-foreground">{apt.doctor?.user?.email}</div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex flex-col gap-1">
+                      <div className="flex items-center gap-2">
+                        <Clock className="w-3.5 h-3.5 text-primary" />
+                        <span className="text-sm font-medium">
+                          {format(new Date(apt.startTime), "PPp")}
                         </span>
                       </div>
                       <h3 className="text-xl font-bold text-slate-900">{appt.doctor?.user?.fullName || "Doctor"}</h3>
