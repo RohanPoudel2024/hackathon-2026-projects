@@ -27,22 +27,27 @@ type IceServer = {
 export class CallsService {
   constructor(private readonly prisma: PrismaService) {}
 
+  async getSessionByAppointmentId(appointmentId: string) {
+    return this.prisma.callSession.findUnique({
+      where: { appointmentId },
+      select: callSessionSelect,
+    });
+  }
+
   async getIceServers() {
     const servers: IceServer[] = [
-      {
-        urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302'],
-      },
+      { urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302'] },
     ];
 
-    if (
-      process.env.TURN_URL &&
-      process.env.TURN_USERNAME &&
-      process.env.TURN_CREDENTIAL
-    ) {
+    const turnUrls = process.env.TURN_URLS;
+    const turnUsername = process.env.TURN_USERNAME;
+    const turnCredential = process.env.TURN_CREDENTIAL;
+
+    if (turnUrls && turnUsername && turnCredential) {
       servers.push({
-        urls: [process.env.TURN_URL],
-        username: process.env.TURN_USERNAME,
-        credential: process.env.TURN_CREDENTIAL,
+        urls: turnUrls.split(','),
+        username: turnUsername,
+        credential: turnCredential,
       });
     }
 
@@ -77,17 +82,14 @@ export class CallsService {
       select: callSessionSelect,
     });
 
-    if (existing && existing.status !== CallStatus.ENDED) {
-      throw new BadRequestException('Call already active');
-    }
-
+    // Allow joining INITIATED and ONGOING sessions (participant reconnect).
+    // Only reset ENDED sessions back to INITIATED.
     const session = await this.prisma.callSession.upsert({
       where: { appointmentId },
-      update: {
-        status: CallStatus.INITIATED,
-        startedAt: null,
-        endedAt: null,
-      },
+      update:
+        existing?.status === CallStatus.ENDED
+          ? { status: CallStatus.INITIATED, startedAt: null, endedAt: null }
+          : {}, // keep INITIATED or ONGOING as-is
       create: {
         appointmentId,
         doctorId: appointment.doctorId,
@@ -105,19 +107,25 @@ export class CallsService {
     };
   }
 
+
   async acceptCall(callSessionId: string, userId: string) {
     const session = await this.ensureParticipant(callSessionId, userId);
 
-    if (session.status !== CallStatus.INITIATED) {
+    // Only reject if the call has ended
+    if (session.status === CallStatus.ENDED || session.status === CallStatus.MISSED) {
       throw new BadRequestException('Call is not available');
     }
 
     return this.prisma.callSession.update({
       where: { id: callSessionId },
-      data: { status: CallStatus.ONGOING, startedAt: new Date() },
+      data: {
+        status: CallStatus.ONGOING,
+        startedAt: session.status === CallStatus.INITIATED ? new Date() : undefined,
+      },
       select: callSessionSelect,
     });
   }
+
 
   async rejectCall(callSessionId: string, userId: string) {
     await this.ensureParticipant(callSessionId, userId);

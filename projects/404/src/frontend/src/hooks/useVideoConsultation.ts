@@ -1,4 +1,23 @@
+/**
+ * useVideoConsultation
+ * --------------------
+ * Real WebRTC hook wired to the backend CallsGateway via Socket.io.
+ *
+ * Flow:
+ *   1. Both physician and patient navigate to /consultation/:appointmentId.
+ *   2. Both emit `call:initiate` (backend allows re-joining INITIATED sessions).
+ *   3. First to join: socket enters room alone, receives own session ack.
+ *   4. Second to join: backend emits `call:ready` to the room.
+ *   5. The FIRST participant (isAlone === true) creates and sends the WebRTC offer.
+ *   6. The second receives the offer, creates and sends an answer.
+ *   7. Both exchange ICE candidates until the peer connection is established.
+ */
 import { useState, useRef, useCallback, useEffect } from "react";
+import { io, Socket } from "socket.io-client";
+
+const SOCKET_URL = (
+  (import.meta.env.VITE_API_URL as string) || "http://localhost:3000/api"
+).replace(/\/api$/, "");
 
 export type ConsultationPhase =
   | "checking-permissions"
@@ -39,7 +58,7 @@ export interface ConsultationState {
   connectionQuality: "excellent" | "good" | "poor" | "unknown";
 }
 
-export function useVideoConsultation() {
+export function useVideoConsultation(appointmentId?: string) {
   const [state, setState] = useState<ConsultationState>({
     phase: "checking-permissions",
     cameraPermission: "pending",
@@ -66,8 +85,100 @@ export function useVideoConsultation() {
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  /** Stores the remote MediaStream as soon as ontrack fires (even before ConsultationRoom mounts) */
+  const remoteStreamRef = useRef<MediaStream | null>(null);
+  const socketRef = useRef<Socket | null>(null);
+  const peerRef = useRef<RTCPeerConnection | null>(null);
+  const callSessionIdRef = useRef<string | null>(null);
+  /** true if this client was the first one into the call room */
+  const isAloneRef = useRef(false);
 
-  // Enumerate devices
+  // ─── Helpers ──────────────────────────────────────────────────────────────
+
+  const startTimer = useCallback(() => {
+    if (timerRef.current) clearInterval(timerRef.current);
+    timerRef.current = setInterval(() => {
+      setState((prev) => ({ ...prev, callDuration: prev.callDuration + 1 }));
+    }, 1000);
+  }, []);
+
+  // ─── RTCPeerConnection ───────────────────────────────────────────────────
+
+  const createPeerConnection = useCallback(
+    (iceServers: RTCIceServer[]): RTCPeerConnection => {
+      if (peerRef.current) {
+        peerRef.current.close();
+      }
+      const pc = new RTCPeerConnection({ iceServers });
+      peerRef.current = pc;
+
+      // Add local tracks
+      streamRef.current?.getTracks().forEach((t) => pc.addTrack(t, streamRef.current!));
+
+      // ICE candidates → relay to peer via socket
+      pc.onicecandidate = (e) => {
+        if (e.candidate && socketRef.current && callSessionIdRef.current) {
+          socketRef.current.emit("webrtc:ice", {
+            callSessionId: callSessionIdRef.current,
+            payload: e.candidate,
+          });
+        }
+      };
+
+      // Remote tracks → save to ref AND attach if the element is already mounted
+      pc.ontrack = (e) => {
+        if (e.streams[0]) {
+          remoteStreamRef.current = e.streams[0];
+          // Attach immediately if ConsultationRoom is already rendered
+          if (remoteVideoRef.current) {
+            remoteVideoRef.current.srcObject = e.streams[0];
+          }
+        }
+      };
+
+      // Connection state changes
+      pc.onconnectionstatechange = () => {
+        if (pc.connectionState === "connected") {
+          setState((prev) => ({
+            ...prev,
+            phase: "in-call",
+            connectionQuality: "excellent",
+          }));
+          startTimer();
+        } else if (
+          pc.connectionState === "disconnected" ||
+          pc.connectionState === "failed"
+        ) {
+          setState((prev) => ({ ...prev, phase: "reconnecting" }));
+        }
+      };
+
+      return pc;
+    },
+    [startTimer]
+  );
+
+  // ─── ICE Servers ──────────────────────────────────────────────────────────
+
+  const fetchIceServers = useCallback(async (): Promise<RTCIceServer[]> => {
+    try {
+      const token = localStorage.getItem("token");
+      const baseUrl =
+        (import.meta.env.VITE_API_URL as string) || "http://localhost:3000/api";
+      const res = await fetch(`${baseUrl}/calls/ice-servers`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) return await res.json();
+    } catch {
+      // fall through to default
+    }
+    return [
+      { urls: ["stun:stun.l.google.com:19302", "stun:stun1.l.google.com:19302"] },
+    ];
+  }, []);
+
+  // ─── Device Enumeration ──────────────────────────────────────────────────
+
   const enumerateDevices = useCallback(async () => {
     try {
       const devices = await navigator.mediaDevices.enumerateDevices();
@@ -80,7 +191,6 @@ export function useVideoConsultation() {
       const speakers = devices
         .filter((d) => d.kind === "audiooutput")
         .map((d, i) => ({ deviceId: d.deviceId, label: d.label || `Speaker ${i + 1}` }));
-
       setState((prev) => ({
         ...prev,
         cameras,
@@ -95,7 +205,8 @@ export function useVideoConsultation() {
     }
   }, []);
 
-  // Request permissions & start local preview
+  // ─── Permissions ─────────────────────────────────────────────────────────
+
   const requestPermissions = useCallback(async () => {
     setState((prev) => ({ ...prev, phase: "checking-permissions" }));
     try {
@@ -105,7 +216,6 @@ export function useVideoConsultation() {
       });
       streamRef.current = stream;
       await enumerateDevices();
-
       setState((prev) => ({
         ...prev,
         localStream: stream,
@@ -113,10 +223,7 @@ export function useVideoConsultation() {
         micPermission: "granted",
         phase: "device-setup",
       }));
-
-      if (localVideoRef.current) {
-        localVideoRef.current.srcObject = stream;
-      }
+      if (localVideoRef.current) localVideoRef.current.srcObject = stream;
     } catch (err: unknown) {
       const error = err as DOMException;
       const isDenied =
@@ -130,7 +237,8 @@ export function useVideoConsultation() {
     }
   }, [enumerateDevices]);
 
-  // Switch device
+  // ─── Device Switch ───────────────────────────────────────────────────────
+
   const switchDevice = useCallback(
     async (type: "camera" | "mic" | "speaker", deviceId: string) => {
       setState((prev) => ({
@@ -139,27 +247,19 @@ export function useVideoConsultation() {
         selectedMic: type === "mic" ? deviceId : prev.selectedMic,
         selectedSpeaker: type === "speaker" ? deviceId : prev.selectedSpeaker,
       }));
-
-      if (type === "speaker") return; // speaker switching done via setSinkId
-
+      if (type === "speaker") return;
       try {
         const constraints = {
           video:
             type === "camera"
               ? { deviceId: { exact: deviceId } }
-              : streamRef.current?.getVideoTracks().length
-              ? true
-              : false,
+              : !!streamRef.current?.getVideoTracks().length,
           audio:
             type === "mic"
               ? { deviceId: { exact: deviceId } }
-              : streamRef.current?.getAudioTracks().length
-              ? true
-              : false,
+              : !!streamRef.current?.getAudioTracks().length,
         };
         const newStream = await navigator.mediaDevices.getUserMedia(constraints);
-
-        // Stop old tracks of the changed type
         if (streamRef.current) {
           const oldTracks =
             type === "camera"
@@ -167,67 +267,187 @@ export function useVideoConsultation() {
               : streamRef.current.getAudioTracks();
           oldTracks.forEach((t) => t.stop());
         }
-
         streamRef.current = newStream;
         setState((prev) => ({ ...prev, localStream: newStream }));
-        if (localVideoRef.current) {
-          localVideoRef.current.srcObject = newStream;
-        }
+        if (localVideoRef.current) localVideoRef.current.srcObject = newStream;
       } catch {
-        // ignore switch errors
+        // ignore
       }
     },
     []
   );
 
-  // Proceed from device-setup to waiting room
   const proceedToWaitingRoom = useCallback(() => {
     setState((prev) => ({ ...prev, phase: "waiting-room" }));
   }, []);
 
-  // Join the call
-  const joinCall = useCallback(() => {
-    setState((prev) => ({ ...prev, phase: "connecting" }));
-    // Simulate connecting delay
-    setTimeout(() => {
-      setState((prev) => ({ ...prev, phase: "in-call", connectionQuality: "excellent" }));
-      timerRef.current = setInterval(() => {
-        setState((prev) => ({ ...prev, callDuration: prev.callDuration + 1 }));
-      }, 1000);
-    }, 2000);
-  }, []);
+  // ─── Join Call ────────────────────────────────────────────────────────────
 
-  // Toggle mute
+  const joinCall = useCallback(() => {
+    if (!appointmentId) {
+      setState((prev) => ({ ...prev, phase: "connecting" }));
+      setTimeout(() => {
+        setState((prev) => ({ ...prev, phase: "in-call", connectionQuality: "excellent" }));
+        startTimer();
+      }, 2000);
+      return;
+    }
+
+    setState((prev) => ({ ...prev, phase: "connecting" }));
+
+    const token = localStorage.getItem("token");
+    const socket = io(SOCKET_URL, {
+      transports: ["websocket"],
+      auth: { token },
+      // Pass token as a query param too — Vite's WS proxy may strip auth during handshake
+      query: { token: token ?? "" },
+    });
+    socketRef.current = socket;
+
+    socket.on("connect", () => {
+      console.log("[socket] connected:", socket.id);
+      socket.emit(
+        "call:initiate",
+        { appointmentId },
+        (response: { session?: { id: string }; error?: string }) => {
+          if (response?.error || !response?.session?.id) {
+            console.error("[call:initiate] error:", response?.error);
+            return;
+          }
+          callSessionIdRef.current = response.session.id;
+          console.log("[call:initiate] session:", response.session.id);
+        }
+      );
+    });
+
+    /**
+     * call:ready — emitted by the backend per-socket with a shouldOffer flag.
+     * shouldOffer=true  → this peer was first; create and send WebRTC offer.
+     * shouldOffer=false → this peer was second; wait to receive the offer.
+     */
+    socket.on(
+      "call:ready",
+      async ({
+        session,
+        shouldOffer,
+      }: {
+        session: { id: string };
+        shouldOffer: boolean;
+      }) => {
+        callSessionIdRef.current = session.id;
+        console.log("[call:ready] shouldOffer:", shouldOffer);
+
+        if (shouldOffer) {
+          const iceServers = await fetchIceServers();
+          const pc = createPeerConnection(iceServers);
+          const offer = await pc.createOffer();
+          await pc.setLocalDescription(offer);
+          socket.emit("webrtc:offer", { callSessionId: session.id, payload: offer });
+          console.log("[webrtc] offer sent");
+        }
+        // If !shouldOffer: wait — the other peer will send the offer via webrtc:offer
+      }
+    );
+
+    /** Received by the peer with shouldOffer=false → answer */
+    socket.on(
+      "webrtc:offer",
+      async ({ payload }: { from: string; payload: RTCSessionDescriptionInit }) => {
+        console.log("[webrtc] offer received");
+        const iceServers = await fetchIceServers();
+        const pc = createPeerConnection(iceServers);
+        await pc.setRemoteDescription(new RTCSessionDescription(payload));
+        const answer = await pc.createAnswer();
+        await pc.setLocalDescription(answer);
+        socket.emit("webrtc:answer", {
+          callSessionId: callSessionIdRef.current,
+          payload: answer,
+        });
+        console.log("[webrtc] answer sent");
+      }
+    );
+
+    /** Received by the peer with shouldOffer=true → set remote description */
+    socket.on(
+      "webrtc:answer",
+      async ({ payload }: { from: string; payload: RTCSessionDescriptionInit }) => {
+        console.log("[webrtc] answer received");
+        await peerRef.current?.setRemoteDescription(new RTCSessionDescription(payload));
+      }
+    );
+
+    /** Both sides: trickle ICE candidates */
+    socket.on(
+      "webrtc:ice",
+      async ({ payload }: { from: string; payload: RTCIceCandidateInit }) => {
+        try {
+          await peerRef.current?.addIceCandidate(new RTCIceCandidate(payload));
+        } catch {
+          // stale candidate — ignore
+        }
+      }
+    );
+
+    /** Peer ended the call */
+    socket.on("call:ended", () => {
+      cleanupCall();
+      setState((prev) => ({ ...prev, phase: "call-ended" }));
+    });
+
+    socket.on("connect_error", (err) => {
+      console.error("[socket] connect error:", err.message);
+    });
+  }, [appointmentId, createPeerConnection, fetchIceServers, startTimer]); // eslint-disable-line react-hooks/exhaustive-deps
+
+
+  // ─── Controls ────────────────────────────────────────────────────────────
+
   const toggleMute = useCallback(() => {
     if (streamRef.current) {
-      streamRef.current.getAudioTracks().forEach((t) => {
-        t.enabled = !t.enabled;
-      });
+      streamRef.current
+        .getAudioTracks()
+        .forEach((t) => { t.enabled = !t.enabled; });
     }
     setState((prev) => ({ ...prev, isMuted: !prev.isMuted }));
   }, []);
 
-  // Toggle camera
   const toggleCamera = useCallback(() => {
     if (streamRef.current) {
-      streamRef.current.getVideoTracks().forEach((t) => {
-        t.enabled = !t.enabled;
-      });
+      streamRef.current
+        .getVideoTracks()
+        .forEach((t) => { t.enabled = !t.enabled; });
     }
     setState((prev) => ({ ...prev, isCameraOff: !prev.isCameraOff }));
   }, []);
 
-  // End call
-  const endCall = useCallback(() => {
+  const cleanupCall = useCallback(() => {
     if (timerRef.current) clearInterval(timerRef.current);
     if (streamRef.current) {
       streamRef.current.getTracks().forEach((t) => t.stop());
       streamRef.current = null;
     }
-    setState((prev) => ({ ...prev, phase: "call-ended", localStream: null }));
+    if (peerRef.current) {
+      peerRef.current.close();
+      peerRef.current = null;
+    }
+    if (socketRef.current) {
+      socketRef.current.disconnect();
+      socketRef.current = null;
+    }
+    callSessionIdRef.current = null;
+    isAloneRef.current = false;
   }, []);
 
-  // Reconnect
+  const endCall = useCallback(() => {
+    if (socketRef.current && callSessionIdRef.current) {
+      socketRef.current.emit("call:end", {
+        callSessionId: callSessionIdRef.current,
+      });
+    }
+    cleanupCall();
+    setState((prev) => ({ ...prev, phase: "call-ended", localStream: null }));
+  }, [cleanupCall]);
+
   const reconnect = useCallback(() => {
     setState((prev) => ({ ...prev, phase: "reconnecting" }));
     setTimeout(() => {
@@ -235,12 +455,10 @@ export function useVideoConsultation() {
     }, 3000);
   }, []);
 
-  // Fullscreen toggle
   const toggleFullscreen = useCallback(() => {
     setState((prev) => ({ ...prev, isFullscreen: !prev.isFullscreen }));
   }, []);
 
-  // Side panel
   const toggleSidePanel = useCallback(() => {
     setState((prev) => ({ ...prev, isSidePanelOpen: !prev.isSidePanelOpen }));
   }, []);
@@ -253,24 +471,32 @@ export function useVideoConsultation() {
     setState((prev) => ({ ...prev, notes }));
   }, []);
 
-  // Attach local video stream whenever ref or stream changes
+  // ─── Effects ──────────────────────────────────────────────────────────────
+
   useEffect(() => {
     if (localVideoRef.current && state.localStream) {
       localVideoRef.current.srcObject = state.localStream;
     }
   }, [state.localStream]);
 
-  // Cleanup on unmount
+  /**
+   * When the phase switches to "in-call", ConsultationRoom mounts and
+   * remoteVideoRef gets attached to the DOM.  Attach the saved remote
+   * stream (which may have arrived via ontrack while WaitingRoom was showing).
+   */
+  useEffect(() => {
+    if (state.phase === "in-call" && remoteVideoRef.current && remoteStreamRef.current) {
+      remoteVideoRef.current.srcObject = remoteStreamRef.current;
+    }
+  }, [state.phase]);
+
+
   useEffect(() => {
     return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach((t) => t.stop());
-      }
+      cleanupCall();
     };
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Auto-request on mount
   useEffect(() => {
     requestPermissions();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -279,7 +505,8 @@ export function useVideoConsultation() {
     const h = Math.floor(seconds / 3600);
     const m = Math.floor((seconds % 3600) / 60);
     const s = seconds % 60;
-    if (h > 0) return `${h}:${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
+    if (h > 0)
+      return `${h}:${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
     return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
   };
 

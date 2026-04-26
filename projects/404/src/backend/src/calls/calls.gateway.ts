@@ -28,10 +28,14 @@ export class CallsGateway implements OnGatewayConnection, OnGatewayDisconnect {
     private readonly jwtService: JwtService,
   ) {}
 
+  // ─── Connection Lifecycle ─────────────────────────────────────────────────
+
   async handleConnection(client: Socket) {
     const token = this.extractToken(client);
+    console.log(`[gateway] connect ${client.id} — token: ${token ? 'present' : 'MISSING'}`);
 
     if (!token) {
+      client.emit('exception', { status: 'error', message: 'Missing auth token' });
       client.disconnect();
       return;
     }
@@ -45,7 +49,10 @@ export class CallsGateway implements OnGatewayConnection, OnGatewayDisconnect {
       const set = this.userSockets.get(payload.sub) ?? new Set<string>();
       set.add(client.id);
       this.userSockets.set(payload.sub, set);
-    } catch {
+      console.log(`[gateway] authenticated ${client.id} → user ${payload.sub}`);
+    } catch (err) {
+      console.error(`[gateway] JWT error for ${client.id}:`, err);
+      client.emit('exception', { status: 'error', message: 'Invalid auth token' });
       client.disconnect();
     }
   }
@@ -53,6 +60,7 @@ export class CallsGateway implements OnGatewayConnection, OnGatewayDisconnect {
   handleDisconnect(client: Socket) {
     const payload = this.socketUsers.get(client.id);
     this.socketUsers.delete(client.id);
+    console.log(`[gateway] disconnect ${client.id}`);
 
     if (payload) {
       const sockets = this.userSockets.get(payload.sub);
@@ -65,26 +73,54 @@ export class CallsGateway implements OnGatewayConnection, OnGatewayDisconnect {
     }
   }
 
+  // ─── Call Events ────────────────────────────────────────────────────────
+
   @SubscribeMessage('call:initiate')
   async initiateCall(
     @MessageBody() body: CallInitiateDto,
     @ConnectedSocket() client: Socket,
   ) {
-    const user = this.getUser(client);
-    const { session, calleeUserId } = await this.callsService.initiateCall(
-      body.appointmentId,
-      user.sub,
-    );
+    try {
+      const user = this.getUser(client);
+      const { session, calleeUserId } = await this.callsService.initiateCall(
+        body.appointmentId,
+        user.sub,
+      );
 
-    const room = this.roomName(session.id);
-    client.join(room);
+      const room = this.roomName(session.id);
+      client.join(room);
+      console.log(`[gateway] ${client.id} joined room ${room}`);
 
-    this.emitToUser(calleeUserId, 'call:incoming', {
-      session,
-      callerId: user.sub,
-    });
+      const roomSockets = await this.server.in(room).fetchSockets();
+      const peerCount = roomSockets.length;
+      console.log(`[gateway] room ${room} now has ${peerCount} peer(s)`);
 
-    return { session };
+      if (peerCount >= 2) {
+        // Deterministically assign who creates the WebRTC offer:
+        //   First peer (was already waiting) → shouldOffer: true
+        //   Current (just joined as 2nd)     → shouldOffer: false
+        const firstPeerSocket = roomSockets.find((s) => s.id !== client.id);
+        if (firstPeerSocket) {
+          this.server
+            .to(firstPeerSocket.id)
+            .emit('call:ready', { session, shouldOffer: true });
+          console.log(`[gateway] → call:ready(shouldOffer:true) to ${firstPeerSocket.id}`);
+        }
+        client.emit('call:ready', { session, shouldOffer: false });
+        console.log(`[gateway] → call:ready(shouldOffer:false) to ${client.id}`);
+      } else {
+        // First to arrive — notify the other participant
+        this.emitToUser(calleeUserId, 'call:incoming', {
+          session,
+          callerId: user.sub,
+        });
+      }
+
+      return { session };
+    } catch (err: any) {
+      console.error('[gateway] call:initiate error:', err?.message ?? err);
+      return { error: err?.message ?? 'Internal error' };
+    }
   }
 
   @SubscribeMessage('call:accept')
@@ -92,17 +128,22 @@ export class CallsGateway implements OnGatewayConnection, OnGatewayDisconnect {
     @MessageBody() body: CallActionDto,
     @ConnectedSocket() client: Socket,
   ) {
-    const user = this.getUser(client);
-    const session = await this.callsService.acceptCall(
-      body.callSessionId,
-      user.sub,
-    );
+    try {
+      const user = this.getUser(client);
+      const session = await this.callsService.acceptCall(
+        body.callSessionId,
+        user.sub,
+      );
 
-    const room = this.roomName(session.id);
-    client.join(room);
-    this.server.to(room).emit('call:accepted', { session });
+      const room = this.roomName(session.id);
+      client.join(room);
+      this.server.to(room).emit('call:accepted', { session });
 
-    return { session };
+      return { session };
+    } catch (err: any) {
+      console.error('[gateway] call:accept error:', err?.message ?? err);
+      return { error: err?.message ?? 'Internal error' };
+    }
   }
 
   @SubscribeMessage('call:reject')
@@ -110,16 +151,21 @@ export class CallsGateway implements OnGatewayConnection, OnGatewayDisconnect {
     @MessageBody() body: CallActionDto,
     @ConnectedSocket() client: Socket,
   ) {
-    const user = this.getUser(client);
-    const session = await this.callsService.rejectCall(
-      body.callSessionId,
-      user.sub,
-    );
+    try {
+      const user = this.getUser(client);
+      const session = await this.callsService.rejectCall(
+        body.callSessionId,
+        user.sub,
+      );
 
-    const room = this.roomName(session.id);
-    this.server.to(room).emit('call:rejected', { session });
+      const room = this.roomName(session.id);
+      this.server.to(room).emit('call:rejected', { session });
 
-    return { session };
+      return { session };
+    } catch (err: any) {
+      console.error('[gateway] call:reject error:', err?.message ?? err);
+      return { error: err?.message ?? 'Internal error' };
+    }
   }
 
   @SubscribeMessage('call:end')
@@ -127,29 +173,42 @@ export class CallsGateway implements OnGatewayConnection, OnGatewayDisconnect {
     @MessageBody() body: CallActionDto,
     @ConnectedSocket() client: Socket,
   ) {
-    const user = this.getUser(client);
-    const session = await this.callsService.endCall(
-      body.callSessionId,
-      user.sub,
-    );
+    try {
+      const user = this.getUser(client);
+      const session = await this.callsService.endCall(
+        body.callSessionId,
+        user.sub,
+      );
 
-    const room = this.roomName(session.id);
-    this.server.to(room).emit('call:ended', { session });
+      const room = this.roomName(session.id);
+      this.server.to(room).emit('call:ended', { session });
 
-    return { session };
+      return { session };
+    } catch (err: any) {
+      console.error('[gateway] call:end error:', err?.message ?? err);
+      return { error: err?.message ?? 'Internal error' };
+    }
   }
+
+  // ─── WebRTC Signaling ─────────────────────────────────────────────────────
 
   @SubscribeMessage('webrtc:offer')
   async sendOffer(
     @MessageBody() body: CallSignalDto,
     @ConnectedSocket() client: Socket,
   ) {
-    const user = this.getUser(client);
-    await this.callsService.assertParticipant(body.callSessionId, user.sub);
-    const room = this.roomName(body.callSessionId);
-    this.server
-      .to(room)
-      .emit('webrtc:offer', { from: user.sub, payload: body.payload });
+    try {
+      const user = this.getUser(client);
+      const room = this.roomName(body.callSessionId);
+      console.log(`[gateway] webrtc:offer from ${client.id} → room ${room}`);
+      // broadcast excludes the sender — they must NOT receive their own offer
+      client.broadcast
+        .to(room)
+        .emit('webrtc:offer', { from: user.sub, payload: body.payload });
+    } catch (err: any) {
+      console.error('[gateway] webrtc:offer error:', err?.message ?? err);
+      return { error: err?.message ?? 'Internal error' };
+    }
   }
 
   @SubscribeMessage('webrtc:answer')
@@ -157,12 +216,18 @@ export class CallsGateway implements OnGatewayConnection, OnGatewayDisconnect {
     @MessageBody() body: CallSignalDto,
     @ConnectedSocket() client: Socket,
   ) {
-    const user = this.getUser(client);
-    await this.callsService.assertParticipant(body.callSessionId, user.sub);
-    const room = this.roomName(body.callSessionId);
-    this.server
-      .to(room)
-      .emit('webrtc:answer', { from: user.sub, payload: body.payload });
+    try {
+      const user = this.getUser(client);
+      const room = this.roomName(body.callSessionId);
+      console.log(`[gateway] webrtc:answer from ${client.id} → room ${room}`);
+      // broadcast excludes the sender
+      client.broadcast
+        .to(room)
+        .emit('webrtc:answer', { from: user.sub, payload: body.payload });
+    } catch (err: any) {
+      console.error('[gateway] webrtc:answer error:', err?.message ?? err);
+      return { error: err?.message ?? 'Internal error' };
+    }
   }
 
   @SubscribeMessage('webrtc:ice')
@@ -170,30 +235,42 @@ export class CallsGateway implements OnGatewayConnection, OnGatewayDisconnect {
     @MessageBody() body: CallSignalDto,
     @ConnectedSocket() client: Socket,
   ) {
-    const user = this.getUser(client);
-    await this.callsService.assertParticipant(body.callSessionId, user.sub);
-    const room = this.roomName(body.callSessionId);
-    this.server
-      .to(room)
-      .emit('webrtc:ice', { from: user.sub, payload: body.payload });
+    try {
+      const user = this.getUser(client);
+      const room = this.roomName(body.callSessionId);
+      // broadcast excludes the sender
+      client.broadcast
+        .to(room)
+        .emit('webrtc:ice', { from: user.sub, payload: body.payload });
+    } catch (err: any) {
+      return { error: err?.message ?? 'Internal error' };
+    }
   }
 
-  private extractToken(client: Socket) {
+
+  // ─── Helpers ──────────────────────────────────────────────────────────────
+
+  private extractToken(client: Socket): string | undefined {
+    // 1. socket.io auth object: io(url, { auth: { token } })
     const authToken = client.handshake.auth?.token;
-    if (authToken) {
-      return String(authToken);
-    }
+    if (authToken) return String(authToken);
+
+    // 2. Authorization header: Bearer <token>
     const header = client.handshake.headers?.authorization;
     if (typeof header === 'string' && header.startsWith('Bearer ')) {
       return header.slice(7);
     }
+
+    // 3. Query param: ?token=<token>  (fallback for some proxy setups)
+    const queryToken = client.handshake.query?.token;
+    if (queryToken) return String(queryToken);
+
     return undefined;
   }
 
-  private getUser(client: Socket) {
+  private getUser(client: Socket): JwtPayload {
     const user = this.socketUsers.get(client.id);
     if (!user) {
-      client.disconnect();
       throw new Error('Unauthorized');
     }
     return user;
@@ -201,9 +278,7 @@ export class CallsGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   private emitToUser(userId: string, event: string, payload: unknown) {
     const sockets = this.userSockets.get(userId);
-    if (!sockets) {
-      return;
-    }
+    if (!sockets) return;
     for (const socketId of sockets) {
       this.server.to(socketId).emit(event, payload);
     }
