@@ -39,6 +39,7 @@ export function Sidebar({ role }: SidebarProps) {
     ],
     patient: [
       { name: "Overview", href: "/patient", icon: LayoutDashboard },
+      { name: "Appointments", href: "/patient/appointments", icon: CalendarHeart },
       { name: "Messages", href: "/patient/chat", icon: MessageSquare },
       { name: "Profile", href: "/patient/profile", icon: Settings },
     ]

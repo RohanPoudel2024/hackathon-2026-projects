@@ -1,4 +1,4 @@
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { useVideoConsultation } from "@/hooks/useVideoConsultation";
 import { PermissionGate } from "@/components/consultation/PermissionGate";
 import { DeviceSetup } from "@/components/consultation/DeviceSetup";
@@ -14,11 +14,11 @@ import { CallEndedScreen } from "@/components/consultation/CallEndedScreen";
  *   → waiting-room → connecting → in-call ↔ reconnecting
  *   → call-ended
  *
- * No backend or WebRTC signalling is wired — this is a pure UI layer.
- * Wire up your WebRTC peer connection inside useVideoConsultation.ts.
+ * Reads :appointmentId from the URL to wire real WebRTC signaling.
  */
 export function VideoConsultationPage() {
   const navigate = useNavigate();
+  const { appointmentId } = useParams<{ appointmentId?: string }>();
   const {
     state,
     localVideoRef,
@@ -36,7 +36,7 @@ export function VideoConsultationPage() {
     setActiveTab,
     setNotes,
     formatDuration,
-  } = useVideoConsultation();
+  } = useVideoConsultation(appointmentId);
 
   const handleGoBack = () => {
     navigate(-1);
