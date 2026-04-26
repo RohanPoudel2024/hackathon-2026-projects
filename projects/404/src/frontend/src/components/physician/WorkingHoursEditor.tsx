@@ -1,10 +1,18 @@
 import { useState } from 'react';
-import { Clock, Loader2 } from 'lucide-react';
-
-import { Card, CardContent, CardHeader, CardTitle } from '../ui/Card';
+import { Loader2, Clock } from 'lucide-react';
 import type { WeekDay, WorkingHours, UpsertWorkingHoursRequest } from '../../types/availability.types';
 
-const weekDays: WeekDay[] = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY'];
+const WEEK_DAYS: WeekDay[] = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY'];
+
+const DAY_ABBR: Record<WeekDay, string> = {
+  MONDAY: 'Mon', TUESDAY: 'Tue', WEDNESDAY: 'Wed',
+  THURSDAY: 'Thu', FRIDAY: 'Fri', SATURDAY: 'Sat', SUNDAY: 'Sun',
+};
+
+const DAY_FULL: Record<WeekDay, string> = {
+  MONDAY: 'Monday', TUESDAY: 'Tuesday', WEDNESDAY: 'Wednesday',
+  THURSDAY: 'Thursday', FRIDAY: 'Friday', SATURDAY: 'Saturday', SUNDAY: 'Sunday',
+};
 
 interface WorkingHoursEditorProps {
   workingHours: WorkingHours[];
@@ -16,93 +24,102 @@ interface WorkingHoursEditorProps {
 export default function WorkingHoursEditor({ workingHours, onSave, onDelete, loading }: WorkingHoursEditorProps) {
   const [savingDay, setSavingDay] = useState<WeekDay | null>(null);
 
-  const getDayConfig = (day: WeekDay) => {
-    return workingHours.find(wh => wh.day === day) || { startTime: '09:00', endTime: '17:00', isActive: false };
-  };
+  const getDayConfig = (day: WeekDay) =>
+    workingHours.find((wh) => wh.day === day) || { startTime: '09:00', endTime: '17:00', isActive: false };
 
   const handleToggleActive = async (day: WeekDay, currentActive: boolean) => {
+    setSavingDay(day);
     if (currentActive) {
-      setSavingDay(day);
       await onDelete(day);
-      setSavingDay(null);
     } else {
-      setSavingDay(day);
       await onSave({ day, startTime: '09:00', endTime: '17:00' });
-      setSavingDay(null);
     }
+    setSavingDay(null);
   };
 
   const handleTimeChange = async (day: WeekDay, field: 'startTime' | 'endTime', value: string) => {
     const current = getDayConfig(day);
     setSavingDay(day);
-    await onSave({ 
-      day, 
+    await onSave({
+      day,
       startTime: field === 'startTime' ? value : current.startTime,
-      endTime: field === 'endTime' ? value : current.endTime
+      endTime: field === 'endTime' ? value : current.endTime,
     });
     setSavingDay(null);
   };
 
   return (
-    <Card className="border-gray-200">
-      <CardHeader className="border-b border-gray-100 bg-gray-50/50 pb-4">
-        <CardTitle className="text-lg flex items-center gap-2">
-          <Clock size={18} className="text-primary-600" />
-          Weekly Availability
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="p-0">
-        <div className="divide-y divide-gray-100">
-          {weekDays.map((day) => {
-            const config = workingHours.find(wh => wh.day === day);
-            const isActive = !!config;
-            const isSaving = savingDay === day || loading;
+    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+      {/* Card header */}
+      <div className="flex items-center gap-2.5 px-5 py-4 border-b border-gray-100 bg-gray-50/50">
+        <Clock size={17} className="text-emerald-600" />
+        <h2 className="text-sm font-extrabold text-gray-900">Weekly Schedule</h2>
+        <span className="ml-auto text-xs font-semibold text-gray-400">Toggle days on/off</span>
+      </div>
 
-            return (
-              <div key={day} className={`p-4 flex items-center justify-between transition-colors ${isActive ? 'bg-white' : 'bg-gray-50'}`}>
-                <div className="flex items-center gap-4 w-1/3">
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input 
-                      type="checkbox" 
-                      className="sr-only peer" 
-                      checked={isActive}
-                      onChange={() => handleToggleActive(day, isActive)}
-                      disabled={isSaving}
-                    />
-                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-600"></div>
-                  </label>
-                  <span className={`font-medium ${isActive ? 'text-gray-900' : 'text-gray-500'}`}>
-                    {day.charAt(0) + day.slice(1).toLowerCase()}
-                  </span>
+      <div className="divide-y divide-gray-50">
+        {WEEK_DAYS.map((day) => {
+          const config = workingHours.find((wh) => wh.day === day);
+          const isActive = !!config;
+          const isSaving = savingDay === day || loading;
+
+          return (
+            <div
+              key={day}
+              className={`flex flex-col sm:flex-row sm:items-center gap-3 px-5 py-4 transition-colors ${
+                isActive ? 'bg-white' : 'bg-gray-50/50'
+              }`}
+            >
+              {/* Day toggle + label */}
+              <div className="flex items-center gap-3 sm:w-44">
+                {/* Toggle switch */}
+                <label className="relative inline-flex items-center cursor-pointer shrink-0">
+                  <input
+                    type="checkbox"
+                    className="sr-only peer"
+                    checked={isActive}
+                    onChange={() => handleToggleActive(day, isActive)}
+                    disabled={isSaving}
+                  />
+                  <div className="w-10 h-[22px] bg-gray-200 rounded-full peer peer-checked:bg-emerald-500 peer-focus:ring-2 peer-focus:ring-emerald-300/50 transition-colors after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-[18px] after:w-[18px] after:transition-all peer-checked:after:translate-x-[18px]" />
+                </label>
+
+                {/* Day name */}
+                <div>
+                  <p className={`text-sm font-bold ${isActive ? 'text-gray-900' : 'text-gray-400'}`}>
+                    <span className="hidden sm:inline">{DAY_FULL[day]}</span>
+                    <span className="sm:hidden">{DAY_ABBR[day]}</span>
+                  </p>
                 </div>
-
-                {isActive ? (
-                  <div className="flex items-center gap-3 flex-1 justify-end">
-                    <input
-                      type="time"
-                      value={config.startTime}
-                      onChange={(e) => handleTimeChange(day, 'startTime', e.target.value)}
-                      disabled={isSaving}
-                      className="px-3 py-1.5 border border-gray-200 rounded-md text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
-                    />
-                    <span className="text-gray-400">to</span>
-                    <input
-                      type="time"
-                      value={config.endTime}
-                      onChange={(e) => handleTimeChange(day, 'endTime', e.target.value)}
-                      disabled={isSaving}
-                      className="px-3 py-1.5 border border-gray-200 rounded-md text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
-                    />
-                    {isSaving && <Loader2 size={16} className="text-primary-600 animate-spin ml-2" />}
-                  </div>
-                ) : (
-                  <div className="text-sm text-gray-400 italic">Unavailable</div>
-                )}
               </div>
-            );
-          })}
-        </div>
-      </CardContent>
-    </Card>
+
+              {/* Time inputs or unavailable label */}
+              {isActive ? (
+                <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+                  <input
+                    type="time"
+                    value={config!.startTime}
+                    onChange={(e) => handleTimeChange(day, 'startTime', e.target.value)}
+                    disabled={isSaving}
+                    className="px-3 py-1.5 border border-gray-200 rounded-xl text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-400/30 focus:border-emerald-500 transition-all disabled:opacity-50"
+                  />
+                  <span className="text-xs font-semibold text-gray-400">to</span>
+                  <input
+                    type="time"
+                    value={config!.endTime}
+                    onChange={(e) => handleTimeChange(day, 'endTime', e.target.value)}
+                    disabled={isSaving}
+                    className="px-3 py-1.5 border border-gray-200 rounded-xl text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-400/30 focus:border-emerald-500 transition-all disabled:opacity-50"
+                  />
+                  {isSaving && <Loader2 size={15} className="text-emerald-500 animate-spin" />}
+                </div>
+              ) : (
+                <p className="text-sm text-gray-400 font-semibold italic">Not available</p>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
   );
 }

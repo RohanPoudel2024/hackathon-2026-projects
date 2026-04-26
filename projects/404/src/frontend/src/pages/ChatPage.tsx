@@ -115,7 +115,7 @@ export default function ChatPage() {
   };
 
   return (
-    <div className="absolute inset-0 md:static flex flex-col w-full h-[calc(100vh-64px)] md:h-full bg-white md:rounded-3xl md:border border-gray-200 md:shadow-[0_4px_24px_-8px_rgba(0,0,0,0.1)] overflow-hidden">
+    <div className="flex flex-col w-full h-full bg-white md:rounded-3xl md:border border-gray-200 md:shadow-[0_4px_24px_-8px_rgba(0,0,0,0.1)] overflow-hidden">
       {/* Header */}
       <div className={`shrink-0 flex items-center justify-between px-4 md:px-6 py-3.5 border-b z-10 ${cfg.headerBg}`}>
         <div className="flex items-center gap-3 md:gap-4">

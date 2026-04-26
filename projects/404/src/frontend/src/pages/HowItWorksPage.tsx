@@ -1,7 +1,7 @@
 import { Mic, Cpu, FileCheck, CheckSquare, ArrowRight } from 'lucide-react';
 import StepCard from '../components/how-it-works/StepCard';
 import Badge from '../components/ui/Badge';
-import Button from '../components/ui/Button';
+import Button from '../components/ui/PublicButton';
 import CTASection from '../components/landing/CTASection';
 
 const steps = [

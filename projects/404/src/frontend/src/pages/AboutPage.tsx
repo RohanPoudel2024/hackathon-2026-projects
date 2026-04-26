@@ -1,7 +1,7 @@
 import { Heart, Target, Users, Shield, ArrowRight } from 'lucide-react';
 import Badge from '../components/ui/Badge';
 import { Card, CardTitle, CardContent } from '../components/ui/Card';
-import Button from '../components/ui/Button';
+import Button from '../components/ui/PublicButton';
 import CTASection from '../components/landing/CTASection';
 
 const values = [
