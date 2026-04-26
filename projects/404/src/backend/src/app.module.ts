@@ -10,6 +10,7 @@ import { NotificationsModule } from './notifications/notifications.module';
 import { SpecializationsModule } from './specializations/specializations.module';
 import { MedicineModule } from './medicine/medicine.module';
 import { UsersModule } from './users/users.module';
+import { CloudinaryUploadsModule } from './cloudinary/cloudinary.module';
 
 @Module({
   imports: [
@@ -22,6 +23,10 @@ import { UsersModule } from './users/users.module';
     SpecializationsModule,
     UsersModule,
     MedicineModule,
+<<<<<<< HEAD
+=======
+    CloudinaryUploadsModule,
+>>>>>>> e39e1b11ad8aeca3cdf4712813e8a2363acc0b87
   ],
   controllers: [AppController],
   providers: [AppService],
