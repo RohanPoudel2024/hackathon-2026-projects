@@ -2,6 +2,7 @@ import { useSelector, useDispatch } from "react-redux"
 import { cn } from "@/lib/utils"
 import { Bell, Search, User, LogOut, Menu } from "lucide-react"
 import { Link, useNavigate } from "react-router-dom"
+import { NotificationPopover } from "./NotificationPopover"
 import type { RootState } from "@/store"
 import { useLogoutMutation } from "@/apis/auth"
 import { logoutUserAction } from "@/store/features/authSlice"
@@ -45,10 +46,7 @@ export function DashboardTopBar() {
       </div>
 
       <div className="flex items-center gap-3">
-        <Button variant="ghost" size="icon" className="relative rounded-full text-muted-foreground hover:bg-emerald-50 hover:text-emerald-600">
-          <Bell className="h-5 w-5" />
-          <span className="absolute top-2 right-2 h-2 w-2 rounded-full bg-destructive border-2 border-background"></span>
-        </Button>
+        <NotificationPopover />
 
         {user?.role?.toLowerCase() !== 'patient' && (
           <DropdownMenu>

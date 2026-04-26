@@ -2,6 +2,7 @@ import { Link, useNavigate, useLocation } from "react-router-dom"
 import { Activity, Bell, User, LogOut, Menu, X } from "lucide-react"
 import { useSelector, useDispatch } from "react-redux"
 import { useState, useEffect } from "react"
+import { NotificationPopover } from "./NotificationPopover"
 import type { RootState } from "@/store"
 import { useLogoutMutation } from "@/apis/auth"
 import { logoutUserAction } from "@/store/features/authSlice"
@@ -156,10 +157,7 @@ export function Header({ role, navItems: navItemsProp, transparent = false }: He
             </div>
           ) : (
             <div className="flex items-center gap-3">
-              <Button variant="ghost" size="icon" className={cn("relative rounded-full", isTransparentActive ? "text-white/80 hover:text-white hover:bg-white/10" : "text-slate-600 hover:bg-emerald-50 hover:text-emerald-600")}>
-                <Bell className="h-5 w-5" />
-                <span className="absolute top-2 right-2 h-2 w-2 rounded-full bg-destructive border-2 border-white"></span>
-              </Button>
+              <NotificationPopover isTransparentActive={isTransparentActive} />
 
               <DropdownMenu>
                 <DropdownMenuTrigger className="focus:outline-none">
