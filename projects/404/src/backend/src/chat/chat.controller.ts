@@ -1,5 +1,6 @@
 import { Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
+import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { ChatService } from './chat.service';
 import { CreateConversationDto } from './dto/create-conversation.dto';
 import { SendMessageDto } from './dto/send-message.dto';
@@ -14,6 +15,12 @@ export class ChatController {
     return this.chatService.createConversation(body);
   }
 
+  @Get('conversations')
+  listUserConversations(@CurrentUser() user: any) {
+    // CurrentUser returns the JWT payload context, assuming id or sub is available
+    return this.chatService.listUserConversations(user.sub || user.id);
+  }
+
   @Get('conversations/:conversationId/messages')
   listMessages(@Param('conversationId') conversationId: string) {
     return this.chatService.listMessages(conversationId);
@@ -24,3 +31,4 @@ export class ChatController {
     return this.chatService.sendMessage(body);
   }
 }
+

@@ -42,7 +42,7 @@ export interface DoctorSuggestion {
 
 @Injectable()
 export class ChatService {
-  private readonly geminiModel = 'gemini-3-flash-preview';
+  private readonly geminiModel = 'gemini-2.0-flash';
   private readonly geminiApiKey =
     process.env.GEMINI_API_KEY ??
     process.env.GOOGLE_GENAI_API_KEY ??
@@ -88,6 +88,106 @@ export class ChatService {
       orderBy: { createdAt: 'asc' },
       select: messageSelect,
     });
+  }
+
+  async listUserConversations(userId: string) {
+    let conversations = await this.prisma.conversation.findMany({
+      where: {
+        userIds: {
+          has: userId,
+        },
+      },
+      include: {
+        messages: {
+          orderBy: { createdAt: 'desc' },
+          take: 1,
+        },
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+    });
+
+    let hasAiChat = conversations.some(c => c.userIds.length === 1);
+    if (!hasAiChat) {
+      // Auto-create AI conversation
+      const newAiChat = await this.prisma.conversation.create({
+        data: { userIds: [userId] },
+        include: {
+          messages: { orderBy: { createdAt: 'desc' }, take: 1 }
+        }
+      });
+      conversations.push(newAiChat);
+    }
+
+    const allUserIds = new Set<string>();
+    conversations.forEach((c) => c.userIds.forEach((id) => allUserIds.add(id)));
+
+    const users = await this.prisma.user.findMany({
+      where: { id: { in: Array.from(allUserIds) } },
+      select: { id: true, fullName: true, role: true },
+    });
+
+    const userMap = new Map(users.map((u) => [u.id, u]));
+
+    const mapped = conversations.map((c) => {
+      let title = '';
+      let avatarLetter = 'AI';
+      let status = 'online';
+
+      let isAi = false;
+
+      if (c.userIds.length === 1) {
+        // AI Chat
+        title = 'CareFlow AI Assistant';
+        avatarLetter = 'AI';
+        status = 'online';
+        isAi = true;
+      } else {
+        const otherUserId = c.userIds.find((id) => id !== userId) || userId;
+        const otherUser = userMap.get(otherUserId);
+        title = otherUser?.fullName || 'Unknown User';
+        avatarLetter = otherUser?.fullName?.substring(0, 2).toUpperCase() || 'NA';
+        status = 'offline';
+      }
+
+      const lastMessage = c.messages.length > 0 ? c.messages[0] : null;
+
+      const timeStr = lastMessage ? lastMessage.createdAt.toISOString() : c.createdAt.toISOString();
+
+      return {
+        id: c.id,
+        name: title,
+        lastMessage: lastMessage?.content || '',
+        time: timeStr,
+        unread: 0,
+        status: status,
+        avatar: avatarLetter,
+        isAi,
+      };
+    });
+
+    // Pin AI to the top, then sort others desc by time
+    const sorted = mapped.sort((a, b) => {
+      if (a.isAi && !b.isAi) return -1;
+      if (!a.isAi && b.isAi) return 1;
+      const timeA = new Date(a.time).getTime();
+      const timeB = new Date(b.time).getTime();
+      return timeB - timeA;
+    });
+
+    // Deduplicate AI chats: only keep the first one
+    const deduplicated: typeof sorted = [];
+    let aiSeen = false;
+    for (const chat of sorted) {
+      if (chat.isAi) {
+        if (aiSeen) continue;
+        aiSeen = true;
+      }
+      deduplicated.push(chat);
+    }
+    
+    return deduplicated;
   }
 
   async sendMessage(dto: SendMessageDto): Promise<{
