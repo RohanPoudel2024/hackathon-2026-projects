@@ -21,7 +21,7 @@ __pycache__/
 ml-api/models/
 
 # Media (optional depending on project)
-*.mp4
+# *.mp4
 *.zip
 *.rar
 
