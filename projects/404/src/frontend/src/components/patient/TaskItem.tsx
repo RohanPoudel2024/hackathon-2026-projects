@@ -25,9 +25,9 @@ export default function TaskItem({
 }: TaskItemProps) {
   return (
     <Card
-      className={`border ${
-        completed ? "border-gray-100 bg-gray-50/70" : "border-gray-200 bg-white"
-      } p-0`}
+      className={`border-b-0 border-x-0 border-t-0 bg-transparent shadow-none transition-all duration-300 ${
+        completed ? "opacity-60 bg-white/20" : "hover:bg-white/60 bg-white/40"
+      } p-0 rounded-2xl mb-2`}
     >
       <button
         type="button"
@@ -36,10 +36,10 @@ export default function TaskItem({
         className="flex w-full items-start gap-3 px-4 py-3 text-left"
       >
         <span
-          className={`mt-0.5 flex h-8 w-8 items-center justify-center rounded-full border text-sm transition ${
+          className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full border shadow-sm transition-all duration-300 ${
             completed
-              ? "border-emerald-500 bg-emerald-500 text-white"
-              : "border-gray-300 bg-white text-gray-400"
+              ? "border-emerald-500 bg-emerald-500 text-white scale-95"
+              : "border-gray-300/60 bg-white text-gray-300 hover:border-gray-400 group-hover:scale-105"
           }`}
         >
           {completed ? (
@@ -52,8 +52,8 @@ export default function TaskItem({
         <span className="flex-1">
           <span className="flex items-start justify-between gap-2">
             <span
-              className={`text-sm font-semibold ${
-                completed ? "text-gray-500 line-through" : "text-gray-900"
+              className={`text-[15px] font-bold ${
+                completed ? "text-gray-500 line-through decoration-gray-400/50" : "text-gray-900"
               }`}
             >
               {title}

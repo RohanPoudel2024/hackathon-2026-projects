@@ -28,9 +28,9 @@ export default function PatientTasksPage() {
         <div className="space-y-3">
           <h2 className="text-lg font-bold text-gray-900">To Do ({activeTasks.length})</h2>
           {activeTasks.length === 0 ? (
-            <div className="text-center py-8 bg-gray-50 rounded-xl border border-dashed border-gray-200">
-              <CheckSquare size={32} className="mx-auto text-gray-300 mb-2" />
-              <p className="text-gray-500 font-medium">All caught up!</p>
+            <div className="text-center py-10 bg-white/40 rounded-3xl border-2 border-dashed border-gray-300 shadow-sm backdrop-blur-md">
+              <CheckSquare size={36} className="mx-auto text-gray-400 mb-3" />
+              <p className="text-gray-600 font-bold">All caught up!</p>
             </div>
           ) : (
             activeTasks.map(task => (
@@ -47,9 +47,9 @@ export default function PatientTasksPage() {
         </div>
 
         {completedTasks.length > 0 && (
-          <div className="space-y-3">
-            <h2 className="text-lg font-bold text-gray-900 text-opacity-50">Completed</h2>
-            <div className="opacity-75">
+          <div className="mt-8 space-y-3">
+            <h2 className="text-lg font-bold text-gray-600">Completed</h2>
+            <div className="space-y-3">
               {completedTasks.map(task => (
                 <TaskItem
                   key={task.id}
