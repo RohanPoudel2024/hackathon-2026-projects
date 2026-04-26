@@ -11,7 +11,7 @@ import { SpecializationsModule } from './specializations/specializations.module'
 import { MedicineModule } from './medicine/medicine.module';
 import { UsersModule } from './users/users.module';
 import { CloudinaryUploadsModule } from './cloudinary/cloudinary.module';
-
+import { TranscriptModule } from './transcript/transcript.module';
 @Module({
   imports: [
     AppointmentModule,
@@ -23,10 +23,8 @@ import { CloudinaryUploadsModule } from './cloudinary/cloudinary.module';
     SpecializationsModule,
     UsersModule,
     MedicineModule,
-<<<<<<< HEAD
-=======
     CloudinaryUploadsModule,
->>>>>>> e39e1b11ad8aeca3cdf4712813e8a2363acc0b87
+    TranscriptModule,
   ],
   controllers: [AppController],
   providers: [AppService],
