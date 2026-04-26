@@ -1,4 +1,4 @@
-import { Controller, Get, UseGuards } from '@nestjs/common';
+import { Controller, Get, Param, UseGuards } from '@nestjs/common';
 import { CallsService } from './calls.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 
@@ -10,5 +10,10 @@ export class CallsController {
   @Get('ice-servers')
   getIceServers() {
     return this.callsService.getIceServers();
+  }
+
+  @Get('session/:appointmentId')
+  getSessionByAppointment(@Param('appointmentId') appointmentId: string) {
+    return this.callsService.getSessionByAppointmentId(appointmentId);
   }
 }

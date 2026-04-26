@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Loader2, Check, X, Clock, Plus, Calendar, MessageSquare, Phone, Video } from "lucide-react";
+import { Loader2, Check, X, Clock, Plus, Calendar, MessageSquare, Phone, Video, Copy } from "lucide-react";
 import { format, parseISO, isWithinInterval, areIntervalsOverlapping } from "date-fns";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
@@ -40,6 +40,15 @@ export function Appointments() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const doctorId = user?.doctor?.id;
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  const copyLink = (appointmentId: string) => {
+    const url = `${window.location.origin}/physician/consultation/${appointmentId}`;
+    navigator.clipboard.writeText(url).then(() => {
+      setCopiedId(appointmentId);
+      setTimeout(() => setCopiedId(null), 2000);
+    });
+  };
 
   const { data: appointments, isLoading, refetch } = useGetAppointmentsQuery(
     { doctorId },
@@ -317,15 +326,24 @@ export function Appointments() {
                             >
                               <Phone className="w-4 h-4" />
                             </Button>
-                            <Button 
-                              variant="outline" 
-                              size="sm"
-                              className="bg-purple-50 text-purple-600 hover:bg-purple-100 border-purple-200 px-2"
-                              onClick={() => navigate(`/physician/consultation/${apt.id}`)}
-                              title="Video Call"
-                            >
-                              <Video className="w-4 h-4" />
-                            </Button>
+                             <Button 
+                               variant="outline" 
+                               size="sm"
+                               className="bg-purple-50 text-purple-600 hover:bg-purple-100 border-purple-200 px-2"
+                               onClick={() => navigate(`/physician/consultation/${apt.id}`)}
+                               title="Video Call"
+                             >
+                               <Video className="w-4 h-4" />
+                             </Button>
+                             <Button
+                               variant="outline"
+                               size="sm"
+                               className="px-2 text-muted-foreground hover:text-foreground"
+                               onClick={() => copyLink(apt.id)}
+                               title="Copy joining link"
+                             >
+                               {copiedId === apt.id ? <Check className="w-4 h-4 text-green-600" /> : <Copy className="w-4 h-4" />}
+                             </Button>
                          </div>
                        )}
                     </div>

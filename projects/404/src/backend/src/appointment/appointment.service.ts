@@ -3,7 +3,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
+import { CallStatus, Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma.service';
 import { CreateAppointmentDto } from './dto/create-appointment.dto';
 import { UpdateAppointmentDto } from './dto/update-appointment.dto';
@@ -17,6 +17,17 @@ const appointmentSelect = {
   endTime: true,
   reason: true,
   createdAt: true,
+  doctor: {
+    select: {
+      id: true,
+      user: {
+        select: {
+          fullName: true,
+          email: true,
+        }
+      }
+    }
+  },
   patient: {
     select: {
       id: true,
@@ -27,7 +38,13 @@ const appointmentSelect = {
         }
       }
     }
-  }
+  },
+  callSession: {
+    select: {
+      id: true,
+      status: true,
+    }
+  },
 } satisfies Prisma.AppointmentSelect;
 
 export type AppointmentResponse = Prisma.AppointmentGetPayload<{
@@ -120,7 +137,7 @@ export class AppointmentService {
       await this.ensurePatientExists(patientId);
     }
 
-    return this.prisma.appointment.update({
+    const updated = await this.prisma.appointment.update({
       where: { id },
       data: {
         doctorId,
@@ -132,6 +149,28 @@ export class AppointmentService {
       },
       select: appointmentSelect,
     });
+
+    // Auto-create a CallSession when appointment is confirmed
+    if (data.status === 'CONFIRMED') {
+      await this.prisma.callSession.upsert({
+        where: { appointmentId: id },
+        update: { status: CallStatus.INITIATED },
+        create: {
+          appointmentId: id,
+          doctorId: existingAppointment.doctorId,
+          patientId: existingAppointment.patientId,
+          status: CallStatus.INITIATED,
+        },
+      });
+
+      // Re-fetch so the response includes the new callSession
+      return this.prisma.appointment.findUniqueOrThrow({
+        where: { id },
+        select: appointmentSelect,
+      });
+    }
+
+    return updated;
   }
 
   async remove(id: string): Promise<AppointmentResponse> {
