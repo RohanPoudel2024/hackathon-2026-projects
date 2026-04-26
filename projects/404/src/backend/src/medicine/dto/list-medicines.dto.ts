@@ -26,5 +26,9 @@ export class ListMedicinesQueryDto {
   @IsString()
   @Transform(({ value }: { value: unknown }) => trimOptionalString(value))
   search?: string;
-  category: any;
+
+  @ApiPropertyOptional({ example: 'PRESCRIPTION' })
+  @IsOptional()
+  @IsString()
+  category?: string;
 }
