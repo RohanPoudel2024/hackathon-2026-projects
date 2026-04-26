@@ -1,169 +1,153 @@
 import { useEffect, useState } from 'react';
 import { Plus, Calendar } from 'lucide-react';
 import AppointmentCard from '../../components/appointments/AppointmentCard';
-import Button from '../../components/ui/Button';
-import { listAppointments, createAppointment, deleteAppointment } from '../../lib/api/appointment.service';
-import type { Appointment, CreateAppointmentRequest } from '../../types/appointment.types';
+import BookingFlow from '../../components/appointments/BookingFlow';
+import { listAppointments, deleteAppointment } from '../../lib/api/appointment.service';
+import type { Appointment } from '../../types/appointment.types';
 import { useAuth } from '../../contexts/AuthContext';
-import SlotSelector from '../../components/availability/SlotSelector';
-import { listAvailableSlots } from '../../lib/api/availability.service';
-import type { TimeSlot } from '../../types/availability.types';
-import { Card, CardContent } from '../../components/ui/Card';
+import { useCurrentUser } from '../../hooks/useCurrentUser';
+import apiClient from '../../lib/api/axios';
+
+interface DoctorOption {
+  doctorId: string;
+  doctorName: string;
+  specialization: string;
+  workingHours: { day: string; startTime: string; endTime: string }[];
+}
 
 export default function PatientAppointmentsPage() {
   const { user } = useAuth();
+  const { profile } = useCurrentUser();
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  // Booking state
   const [isBooking, setIsBooking] = useState(false);
-  const [selectedDate, setSelectedDate] = useState(new Date());
-  const [slots, setSlots] = useState<TimeSlot[]>([]);
-  const [loadingSlots, setLoadingSlots] = useState(false);
-  const [selectedSlot, setSelectedSlot] = useState<TimeSlot | null>(null);
-
-  // Hardcoded doctor for patient booking demo
-  const DEMO_DOCTOR_ID = "619e0785-3b1a-4d26-bb21-2a1c0d750c05"; // Replaced later or handled via API
+  const [doctors, setDoctors] = useState<DoctorOption[]>([]);
 
   const fetchAppointments = async () => {
     if (!user?.id) return;
+    setLoading(true);
     try {
-      setLoading(true);
       const data = await listAppointments({ patientId: user.id });
-      setAppointments(data);
-    } catch (err) {
-      setError('Failed to load appointments.');
-    } finally {
-      setLoading(false);
-    }
+      setAppointments(data.sort((a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime()));
+    } catch { /* fail silently */ }
+    finally { setLoading(false); }
   };
 
-  useEffect(() => {
-    fetchAppointments();
-  }, [user?.id]);
-
-  const handleDateChange = async (date: Date) => {
-    setSelectedDate(date);
-    setSelectedSlot(null);
-    setLoadingSlots(true);
+  // Fetch available doctors for booking
+  const fetchDoctors = async () => {
     try {
-      const dateString = date.toISOString().split('T')[0];
-      const availableSlots = await listAvailableSlots({
-        doctorId: DEMO_DOCTOR_ID,
-        date: dateString,
-        slotMinutes: 30
-      });
-      setSlots(availableSlots);
-    } catch (err) {
-      console.error(err);
-      setSlots([]); // Assume none if error (or no doctor mapped)
-    } finally {
-      setLoadingSlots(false);
-    }
+      const res = await apiClient.get<{ id: string; fullName: string; doctor?: { id: string }; }[]>(
+        '/users', { params: { role: 'DOCTOR', pageSize: 50 } }
+      );
+      // The list comes paginated: res.data.data
+      const raw = (res.data as unknown as { data?: { id: string; fullName: string; doctor?: { id: string } | null }[] }).data ?? [];
+
+      // We already have doctor suggestions with their specializations from chat service;
+      // for booking we fetch suggestions from our fetchAvailableDoctors-style endpoint
+      const doctorDetails = await apiClient.get<DoctorOption[]>('/availability/doctors').catch(() => ({ data: [] as DoctorOption[] }));
+      if (doctorDetails.data.length > 0) {
+        setDoctors(doctorDetails.data);
+        return;
+      }
+
+      // Fallback: map from users list
+      setDoctors(
+        raw
+          .filter((u) => u.doctor?.id)
+          .map((u) => ({
+            doctorId: u.doctor!.id,
+            doctorName: u.fullName,
+            specialization: 'General Medicine',
+            workingHours: [],
+          }))
+      );
+    } catch { /* no doctors loaded */ }
   };
 
-  useEffect(() => {
-    if (isBooking) {
-      handleDateChange(selectedDate);
-    }
-  }, [isBooking]);
-
-  const handleBook = async () => {
-    if (!selectedSlot || !user) return;
-    try {
-      const request: CreateAppointmentRequest = {
-        patientId: user.id,
-        doctorId: DEMO_DOCTOR_ID,
-        startTime: selectedSlot.start,
-        endTime: selectedSlot.end,
-        status: 'PENDING',
-        reason: 'General Follow-up'
-      };
-      await createAppointment(request);
-      setIsBooking(false);
-      setSelectedSlot(null);
-      fetchAppointments();
-    } catch (err) {
-      alert('Failed to book appointment. Doctor may not exist or slot taken.');
-    }
-  };
+  useEffect(() => { fetchAppointments(); }, [user?.id]);
+  useEffect(() => { if (isBooking) fetchDoctors(); }, [isBooking]);
 
   const handleCancel = async (id: string) => {
-    if (confirm('Are you sure you want to cancel this appointment?')) {
-      try {
-        await deleteAppointment(id);
-        fetchAppointments();
-      } catch (err) {
-        alert('Failed to cancel appointment.');
-      }
-    }
+    if (!confirm('Cancel this appointment?')) return;
+    try { await deleteAppointment(id); fetchAppointments(); }
+    catch { alert('Failed to cancel.'); }
   };
 
+  const upcoming = appointments.filter((a) => new Date(a.startTime) > new Date() && a.status !== 'CANCELLED');
+  const past = appointments.filter((a) => new Date(a.startTime) <= new Date() || a.status === 'CANCELLED');
+
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+    <div className="max-w-2xl mx-auto space-y-6 pb-12">
+      <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-extrabold text-gray-900 tracking-tight">Appointments</h1>
-          <p className="text-gray-500 mt-1">Manage your upcoming and past visits.</p>
+          <p className="text-gray-500 text-sm mt-0.5">Manage your upcoming and past visits</p>
         </div>
         {!isBooking && (
-          <Button onClick={() => setIsBooking(true)} className="flex-shrink-0">
-            <Plus size={18} className="mr-2" /> Book Visit
-          </Button>
+          <button
+            onClick={() => setIsBooking(true)}
+            className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 text-white text-sm font-bold rounded-xl hover:bg-indigo-700 shadow-sm hover:shadow-md transition-all"
+          >
+            <Plus size={16} /> Book Visit
+          </button>
         )}
       </div>
 
+      {/* Booking inline flow */}
       {isBooking && (
-        <Card className="border-primary-200 shadow-md">
-          <CardContent className="p-6">
-            <h2 className="text-lg font-bold text-gray-900 mb-4">Book an Appointment</h2>
-            <p className="text-sm text-gray-500 mb-6">Select a date and time that works for you.</p>
-            
-            <SlotSelector 
-              slots={slots}
-              loading={loadingSlots}
-              selectedDate={selectedDate}
-              onDateChange={handleDateChange}
-              selectedSlot={selectedSlot}
-              onSlotSelect={setSelectedSlot}
-            />
-
-            <div className="mt-8 flex justify-end gap-3 pt-4 border-t border-gray-100">
-              <Button variant="outline" onClick={() => setIsBooking(false)}>
-                Cancel
-              </Button>
-              <Button 
-                onClick={handleBook}
-                disabled={!selectedSlot}
-                className={selectedSlot ? 'bg-primary-600' : 'bg-gray-300'}
-              >
-                Confirm Booking
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+        <div className="bg-white rounded-3xl border border-indigo-100 shadow-sm p-6">
+          <BookingFlow
+            doctors={doctors}
+            patientId={profile?.patientId ?? user?.id ?? ''}
+            onSuccess={() => { setIsBooking(false); fetchAppointments(); }}
+            onCancel={() => setIsBooking(false)}
+          />
+        </div>
       )}
 
-      {loading ? (
-        <div className="flex justify-center p-12"><div className="animate-spin h-8 w-8 border-b-2 border-primary-600 rounded-full" /></div>
-      ) : error ? (
-        <div className="bg-red-50 text-red-600 p-4 rounded-lg">{error}</div>
-      ) : appointments.length === 0 ? (
-        <div className="text-center py-12 bg-white rounded-xl border border-dashed border-gray-300">
-          <Calendar size={48} className="mx-auto text-gray-300 mb-4" />
-          <h3 className="text-lg font-semibold text-gray-900">No appointments found</h3>
-          <p className="text-gray-500 mt-1">You don't have any scheduled visits.</p>
+      {/* Loading */}
+      {loading && (
+        <div className="flex justify-center py-12">
+          <div className="w-8 h-8 border-2 border-indigo-200 border-t-indigo-600 rounded-full animate-spin" />
         </div>
-      ) : (
-        <div className="grid md:grid-cols-2 gap-4">
-          {appointments.map(apt => (
-            <AppointmentCard 
-              key={apt.id} 
+      )}
+
+      {/* Upcoming */}
+      {!loading && upcoming.length > 0 && (
+        <div className="space-y-3">
+          <h2 className="text-sm font-bold text-gray-500 uppercase tracking-wide">Upcoming</h2>
+          {upcoming.map((apt) => (
+            <AppointmentCard
+              key={apt.id}
               appointment={apt}
-              onCancel={apt.status === 'CONFIRMED' || apt.status === 'PENDING' ? () => handleCancel(apt.id) : undefined}
+              onCancel={() => handleCancel(apt.id)}
             />
           ))}
+        </div>
+      )}
+
+      {/* Past */}
+      {!loading && past.length > 0 && (
+        <div className="space-y-3">
+          <h2 className="text-sm font-bold text-gray-500 uppercase tracking-wide">Past Visits</h2>
+          {past.map((apt) => (
+            <AppointmentCard key={apt.id} appointment={apt} />
+          ))}
+        </div>
+      )}
+
+      {/* Empty */}
+      {!loading && appointments.length === 0 && !isBooking && (
+        <div className="flex flex-col items-center justify-center py-16 text-center">
+          <Calendar size={48} className="text-indigo-200 mb-4" />
+          <h3 className="text-lg font-bold text-gray-700">No appointments yet</h3>
+          <p className="text-gray-400 text-sm mt-1 mb-4">Schedule your first visit with a provider</p>
+          <button
+            onClick={() => setIsBooking(true)}
+            className="px-5 py-2.5 bg-indigo-600 text-white text-sm font-bold rounded-xl hover:bg-indigo-700 transition-colors"
+          >
+            Book Appointment
+          </button>
         </div>
       )}
     </div>

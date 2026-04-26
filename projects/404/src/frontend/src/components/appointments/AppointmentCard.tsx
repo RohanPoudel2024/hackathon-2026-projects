@@ -1,142 +1,89 @@
-import {
-  Calendar,
-  CheckCircle2,
-  Clock,
-  User,
-  Video,
-  XCircle,
-} from "lucide-react";
-import type {
-  Appointment,
-  AppointmentStatus,
-} from "../../types/appointment.types";
-import { Card, CardContent } from "../ui/Card";
-import Badge from "../ui/Badge";
-import Button from "../ui/Button";
+import { Calendar, CheckCircle2, Clock, XCircle, Stethoscope } from 'lucide-react';
+import type { Appointment, AppointmentStatus } from '../../types/appointment.types';
 
 interface AppointmentCardProps {
   appointment: Appointment;
   isPhysicianView?: boolean;
-  onJoinCall?: () => void;
   onCancel?: () => void;
+  compact?: boolean;
 }
 
-const statusColors: Record<
-  AppointmentStatus,
-  "blue" | "green" | "gray" | "outline"
-> = {
-  PENDING: "outline",
-  CONFIRMED: "blue",
-  CANCELLED: "gray",
-  COMPLETED: "green",
-  RESCHEDULED: "outline",
+const STATUS_STYLE: Record<AppointmentStatus, { bg: string; text: string; dot: string; label: string }> = {
+  PENDING:     { bg: 'bg-amber-50',   text: 'text-amber-700',  dot: 'bg-amber-400',  label: 'Pending' },
+  CONFIRMED:   { bg: 'bg-blue-50',    text: 'text-blue-700',   dot: 'bg-blue-500',   label: 'Confirmed' },
+  CANCELLED:   { bg: 'bg-gray-100',   text: 'text-gray-500',   dot: 'bg-gray-400',   label: 'Cancelled' },
+  COMPLETED:   { bg: 'bg-emerald-50', text: 'text-emerald-700',dot: 'bg-emerald-500',label: 'Completed' },
+  RESCHEDULED: { bg: 'bg-purple-50',  text: 'text-purple-700', dot: 'bg-purple-400', label: 'Rescheduled' },
 };
 
-const formatTime = (isoString: string) => {
-  return new Date(isoString).toLocaleTimeString([], {
-    hour: "numeric",
-    minute: "2-digit",
-  });
-};
+function fmt(iso: string, opts: Intl.DateTimeFormatOptions) {
+  return new Date(iso).toLocaleString(undefined, opts);
+}
 
-const formatDate = (isoString: string) => {
-  return new Date(isoString).toLocaleDateString(undefined, {
-    weekday: "short",
-    month: "short",
-    day: "numeric",
-  });
-};
-
-export default function AppointmentCard({
-  appointment,
-  isPhysicianView = false,
-  onJoinCall,
-  onCancel,
-}: AppointmentCardProps) {
+export default function AppointmentCard({ appointment, isPhysicianView = false, onCancel, compact = false }: AppointmentCardProps) {
+  const s = STATUS_STYLE[appointment.status];
   const isPast = new Date(appointment.endTime) < new Date();
-  const isActive = appointment.status === "CONFIRMED" && !isPast;
+  const canCancel = !isPast && (appointment.status === 'PENDING' || appointment.status === 'CONFIRMED') && onCancel;
+
+  const dateStr = fmt(appointment.startTime, { weekday: 'short', month: 'short', day: 'numeric' });
+  const timeStr = `${fmt(appointment.startTime, { hour: 'numeric', minute: '2-digit' })} – ${fmt(appointment.endTime, { hour: 'numeric', minute: '2-digit' })}`;
 
   return (
-    <Card className="border border-gray-200 bg-white">
-      <CardContent className="p-5">
-        <div className="flex items-start justify-between gap-4">
-          <div className="flex items-start gap-3">
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-50 text-blue-600">
-              <Calendar size={20} />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <Badge variant={statusColors[appointment.status]}>
-                  {appointment.status}
-                </Badge>
-                {isPast && appointment.status !== "CANCELLED" && (
-                  <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-semibold text-gray-500">
-                    Past
-                  </span>
-                )}
-              </div>
-              <h3 className="mt-2 text-base font-semibold text-gray-900">
-                {appointment.reason || "General Consultation"}
-              </h3>
-              <p className="mt-1 text-sm text-gray-500">
-                {isPhysicianView ? "Patient ID" : "Provider ID"}{" "}
-                {
-                  (isPhysicianView
-                    ? appointment.patientId
-                    : appointment.doctorId
-                  ).split("-")[0]
-                }
-                ...
-              </p>
-            </div>
+    <div className={`group relative bg-white border border-gray-100 rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-all ${compact ? 'p-4' : 'p-5'}`}>
+      {/* Left accent bar */}
+      <div className={`absolute left-0 top-0 bottom-0 w-1 rounded-l-2xl ${s.dot}`} />
+
+      <div className="flex items-start gap-4 pl-2">
+        {/* Icon */}
+        <div className={`shrink-0 flex h-12 w-12 items-center justify-center rounded-2xl ${s.bg}`}>
+          <Stethoscope size={20} className={s.text} />
+        </div>
+
+        {/* Main */}
+        <div className="flex-1 min-w-0">
+          <div className="flex flex-wrap items-center gap-2 mb-1">
+            <span className={`inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-0.5 rounded-full ${s.bg} ${s.text}`}>
+              <span className={`w-1.5 h-1.5 rounded-full ${s.dot}`} />
+              {s.label}
+            </span>
+            {isPast && appointment.status !== 'CANCELLED' && (
+              <span className="text-xs font-semibold text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">Past</span>
+            )}
           </div>
 
-          <div className="rounded-2xl border border-gray-100 bg-gray-50 px-3 py-2 text-right">
-            <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">
-              Date
-            </p>
-            <p className="text-sm font-semibold text-gray-900">
-              {formatDate(appointment.startTime)}
-            </p>
-            <p className="mt-1 text-xs text-gray-500">
-              {formatTime(appointment.startTime)} -{" "}
-              {formatTime(appointment.endTime)}
-            </p>
+          <h3 className="text-[15px] font-bold text-gray-900 truncate">
+            {appointment.reason || 'General Consultation'}
+          </h3>
+
+          <div className="flex flex-wrap items-center gap-3 mt-2">
+            <span className="flex items-center gap-1.5 text-xs font-semibold text-gray-500">
+              <Calendar size={12} className="text-gray-400" />
+              {dateStr}
+            </span>
+            <span className="flex items-center gap-1.5 text-xs font-semibold text-gray-500">
+              <Clock size={12} className="text-gray-400" />
+              {timeStr}
+            </span>
           </div>
         </div>
 
-        <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-gray-100 pt-4">
-          <div className="flex items-center gap-2 text-xs text-gray-400">
-            <Clock size={14} />
-            Created {new Date(appointment.createdAt).toLocaleDateString()}
-          </div>
-
-          <div className="flex items-center gap-2">
-            {isActive && onCancel && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={onCancel}
-                className="border-gray-200 text-gray-600 hover:border-red-200 hover:bg-red-50 hover:text-red-600"
-              >
-                <XCircle size={16} /> Cancel
-              </Button>
-            )}
-
-            {isActive && onJoinCall && (
-              <Button size="sm" onClick={onJoinCall}>
-                <Video size={16} /> Join Call
-              </Button>
-            )}
-
-            {appointment.status === "COMPLETED" && (
-              <div className="flex items-center gap-1.5 text-sm font-medium text-emerald-600">
-                <CheckCircle2 size={16} /> Completed
-              </div>
-            )}
-          </div>
+        {/* Right side actions / status */}
+        <div className="shrink-0 flex flex-col items-end gap-2">
+          {canCancel && (
+            <button
+              onClick={onCancel}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-red-600 border border-red-100 bg-red-50 rounded-xl hover:bg-red-100 transition-colors"
+            >
+              <XCircle size={13} /> Cancel
+            </button>
+          )}
+          {appointment.status === 'COMPLETED' && (
+            <span className="flex items-center gap-1.5 text-xs font-semibold text-emerald-600">
+              <CheckCircle2 size={14} /> Done
+            </span>
+          )}
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }
