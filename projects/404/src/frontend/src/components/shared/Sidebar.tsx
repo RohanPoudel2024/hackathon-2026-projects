@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react"
 import { Link, useLocation } from "react-router-dom"
-import { LayoutDashboard, Users, CalendarHeart, Settings, PanelLeftClose, PanelLeftOpen, FileStack, Stethoscope, Clock, MessageSquare } from "lucide-react"
+import { LayoutDashboard, Users, CalendarHeart, Settings, PanelLeftClose, PanelLeftOpen, FileStack, Stethoscope, Clock, MessageSquare, Activity } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 interface SidebarProps {
@@ -61,6 +61,22 @@ export function Sidebar({ role }: SidebarProps) {
         !mobileOpen ? "max-md:w-16" : "max-md:w-64",
         "flex"
       )}>
+        <div className="flex items-center h-16 px-6 border-b shrink-0">
+          <Link 
+            to={role === 'physician' ? '/physician' : `/${role}`} 
+            className="flex items-center gap-2 group transition-opacity hover:opacity-80"
+          >
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-50 border border-emerald-100 transition-colors">
+              <Activity className="h-5 w-5 text-emerald-600" />
+            </div>
+            {!isCollapsed && (window.innerWidth >= 768 || mobileOpen) && (
+              <span className="text-lg font-bold tracking-tight text-slate-900 truncate">
+                HealthCore
+              </span>
+            )}
+          </Link>
+        </div>
+
         <div className="flex md:hidden items-center justify-between p-4 border-b">
           <button
             onClick={() => setMobileOpen(!mobileOpen)}
@@ -71,13 +87,12 @@ export function Sidebar({ role }: SidebarProps) {
         </div>
         <button
           onClick={() => setIsCollapsed(!isCollapsed)}
-          className="absolute -right-3 top-8 bg-background p-1.5 rounded-full border text-muted-foreground hover:text-foreground hover:bg-accent shadow-sm transition-all z-[80] cursor-pointer hidden md:flex"
+          className="absolute -right-3 top-20 bg-background p-1.5 rounded-full border text-muted-foreground hover:text-foreground hover:bg-accent shadow-sm transition-all z-[80] cursor-pointer hidden md:flex"
         >
           {isCollapsed ? <PanelLeftOpen className="h-3.5 w-3.5" /> : <PanelLeftClose className="h-3.5 w-3.5" />}
         </button>
 
         <div className="flex flex-col flex-1 py-4 pt-6 overflow-y-auto hide-scrollbars overflow-x-hidden">
-
           <nav className={cn("grid gap-1 mb-6", isCollapsed ? "px-2" : "px-4")}>
             {items.map((item) => {
               const Icon = item.icon
