@@ -2,6 +2,10 @@ import { Routes, Route, Navigate } from "react-router-dom";
 import { ProtectedRoute } from "@/components/shared/ProtectedRoute";
 import { PatientLayout } from "@/components/layouts/PatientLayout";
 import { PatientDashboard } from "@/pages/patient/Dashboard";
+import { Chat } from "@/pages/patient/Chat";
+import { Consultants } from "@/pages/patient/Consultants";
+import { Appointments } from "@/pages/patient/Appointments";
+import { Medicines } from "@/pages/patient/Medicines";
 import { Login } from "@/pages/auth/Login";
 import { Signup } from "@/pages/auth/Signup";
 import { Profile } from "@/pages/shared/Profile";
@@ -23,6 +27,10 @@ export function PatientRoutes() {
       <Route element={<ProtectedRoute allowedRoles={["patient"]} redirectPath="/patient/login" />}>
         <Route element={<PatientLayout />}>
           <Route path="/" element={<PatientDashboard />} />
+          <Route path="/chat" element={<Chat />} />
+          <Route path="/consultants" element={<Consultants />} />
+          <Route path="/appointments" element={<Appointments />} />
+          <Route path="/medicines" element={<Medicines />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="*" element={<Navigate to="/patient" replace />} />
         </Route>
